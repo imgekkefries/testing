@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title></title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    @font-face {
+      font-family: 'BlackRotting';
+      src: url('BlackRotting.ttf') format('truetype');
+      font-display: swap;
+    }
+
+    :root {
+      --bg: #000000;
+      --ink: #fafafa;
+      --hand-width: 55vw;
+      --rest-gap: 24vw;
+      --right-shift: 4vw;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      overscroll-behavior: none;
+    }
+
+    html {
+      background: #000000;
+      image-rendering: pixelated;
+    }
+
+    body {
+      background: #000000;
+      color: var(--ink);
+      position: fixed;
+      inset: 0;
+      cursor: pointer;
+      filter: contrast(1.06) saturate(0.92) brightness(0.96);
+    }
+
+    /* =========================================================
+       HANDS
+       ========================================================= */
+    .hand {
+      position: fixed;
+      top: 50%;
+      width: var(--hand-width);
+      height: auto;
+      image-rendering: pixelated;
+      user-select: none;
+      -webkit-user-drag: none;
+      display: block;
+      filter: grayscale(1) contrast(1.9) brightness(1.1);
+
+      transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s ease;
+      will-change: transform, opacity;
+      z-index: 2;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    .hand-left {
+      left: 0;
+      transform: translateY(-50%) translateX(-100vw);
+    }
+
+    .hand-right {
+      right: 0;
+      transform: translateY(-50%) translateX(100vw);
+    }
+
+    body.ready .hand {
+      opacity: 1;
+      transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.3s ease;
+    }
+
+    body.ready .hand-left {
+      transform: translateY(calc(-50% + var(--dy, 0px))) translateX(var(--rest-x-left, 0px));
+    }
+
+    body.ready .hand-right {
+      transform: translateY(calc(-50% + var(--dy, 0px))) translateX(var(--rest-x-right, 0px));
+    }
+
+    /* Touch State */
+    body.ready.touching .hand-left {
+      transform: translateY(calc(-50% + var(--dy, 0px))) translateX(var(--touch-x-left, 0px));
+      transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+    body.ready.touching .hand-right {
+      transform: translateY(calc(-50% + var(--dy, 0px))) translateX(var(--touch-x-right, 0px));
+      transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
+    }
+
+    /* Pull Back State */
+    body.sequence-active .hand-left {
+      transform: translateY(calc(-50% + var(--dy, 0px))) translateX(var(--rest-x-left, 0px)) !important;
+      transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    body.sequence-active .hand-right {
+      transform: translateY(calc(-50% + var(--dy, 0px))) translateX(var(--rest-x-right, 0px)) !important;
+      transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    /* Exit: hands slide fully off their respective sides, fading while moving */
+    body.hands-exiting .hand-left {
+      transform: translateY(calc(-50% + var(--dy, 0px))) translateX(-110vw) !important;
+      opacity: 0 !important;
+      transition: transform 1.1s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 1.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    body.hands-exiting .hand-right {
+      transform: translateY(calc(-50% + var(--dy, 0px))) translateX(110vw) !important;
+      opacity: 0 !important;
+      transition: transform 1.1s cubic-bezier(0.4, 0, 0.2, 1),
+                  opacity 1.1s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+
+    /* =========================================================
+       CLICK HINT
+       ========================================================= */
+    #click-hint {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) translateY(5vw);
+      z-index: 3;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    body.ready #click-hint {
+      opacity: 1;
+      transition-delay: 0.8s;
+    }
+
+    body.has-clicked #click-hint {
+      opacity: 0;
+      transition-delay: 0s;
+    }
+
+    .hint-box {
+      font-size: clamp(15px, 2.2vw, 19px);
+      border: max(1px, 0.08em) solid #ffffff;
+      padding: 0.7em 1.3em;
+      position: relative;
+      display: inline-block;
+    }
+
+    .hint-label {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: translateY(-100%);
+      background: #ffffff;
+      color: #000000;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 0.65em;
+      font-weight: 600;
+      line-height: 1.2;
+      padding: 0.1em 0.4em;
+      white-space: nowrap;
+      border-radius: 1px;
+    }
+
+    .hint-text {
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-weight: 400;
+      font-size: 1em;
+      color: #ffffff;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+
+    /* =========================================================
+       SEQUENCE ANIMATIONS (Glow + Text) — the intro click reveal
+       ========================================================= */
+    #sequence-container {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      pointer-events: none;
+      transition: opacity 0.9s ease;
+    }
+
+    body.hands-exiting #sequence-container {
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+
+    .glow {
+      width: 10vw;
+      height: 10vw;
+      background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%);
+      border-radius: 50%;
+      filter: blur(30px);
+      opacity: 0;
+      transform: scale(0);
+      transition: all 0.4s ease-out;
+    }
+
+    body.sequence-glow .glow {
+      opacity: 0.9;
+      transform: scale(1);
+      width: 10vw;
+      height: 10vw;
+      border-radius: 50%;
+      transition: all 0.4s ease-out;
+    }
+
+    body.sequence-stretch .glow {
+      opacity: 0.85;
+      width: 60vw;
+      height: 6vw;
+      border-radius: 50%;
+      transform: scale(1);
+      transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1),
+                  height 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body.sequence-fade .glow {
+      animation: glow-dim 1.5s ease-in-out forwards;
+    }
+
+    @keyframes glow-dim {
+      from { opacity: 0.85; }
+      to   { opacity: 0.3; }
+    }
+
+    .title-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(calc(-50% + var(--title-dx, 0px)), -50%);
+      font-family: 'Pirata One', serif;
+      font-size: clamp(14px, 6vw, 96px);
+      color: #ffffff;
+      letter-spacing: 0.04em;
+      opacity: 0;
+      transition: opacity 0.8s ease, transform 0.8s ease;
+      white-space: nowrap;
+      text-shadow: 0 0 20px rgba(0,0,0,0.8);
+      z-index: 3;
+    }
+
+    body.sequence-text .title-text {
+      opacity: 1;
+      transform: translate(calc(-50% + var(--title-dx, 0px)), -50%) scale(1.05);
+    }
+
+    /* =========================================================
+       FINAL PAGE
+       ========================================================= */
+    .site-title {
+      position: fixed;
+      top: 5vh;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 4;
+      font-family: 'BlackRotting', 'Pirata One', serif;
+      font-size: clamp(80px, 18vw, 240px);
+      color: #ffffff;
+      letter-spacing: 0.03em;
+      text-align: center;
+      text-shadow: 0 0 20px rgba(0,0,0,0.8);
+      line-height: 1;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 1.2s ease;
+    }
+
+    body.head-visible .site-title {
+      opacity: 1;
+    }
+
+    /* ---- UP-HAND WRAPPER ---- */
+    #head-wrap {
+      position: fixed;
+      left: 50%;
+      bottom: 0;
+      transform: translate(-50%, 100%);
+      z-index: 4;
+      pointer-events: none;
+      transition: transform 1.6s cubic-bezier(0.22, 1, 0.36, 1);
+      display: block;
+      line-height: 0;
+    }
+
+    body.head-visible #head-wrap {
+      transform: translate(-50%, 0);
+    }
+
+    #head-img {
+      display: block;
+      height: 92vh;
+      width: auto;
+      max-width: none;
+      image-rendering: pixelated;
+      user-select: none;
+      -webkit-user-drag: none;
+      filter: grayscale(1) contrast(1.9) brightness(1.1);
+    }
+
+    /* =========================================================
+       SIDE COLUMNS
+       (positioned dynamically by JS using uphand's real edges)
+       ========================================================= */
+    .info-col {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 5;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      max-width: clamp(150px, 27vw, 270px);
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    body.head-visible .info-col {
+      opacity: 1;
+      transition-delay: 0.3s;
+    }
+
+    #playlist-col {
+      text-align: right;
+      max-width: clamp(250px, 30vw, 340px);
+    }
+
+    /* --- Right stack container: Projects + Socials, no overlap --- */
+    #right-stack {
+      position: fixed;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      gap: 1.6em;
+      max-width: clamp(150px, 27vw, 270px);
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
+
+    body.head-visible #right-stack {
+      opacity: 1;
+      transition-delay: 0.3s;
+    }
+
+    #right-stack .info-col {
+      position: static;
+      transform: none;
+      max-width: none;
+      opacity: 1;
+      transition: none;
+    }
+
+    .col-heading {
+      font-size: clamp(13px, 1.7vw, 19px);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #ffffff;
+      opacity: 0.55;
+      margin: 0 0 0.9em 0;
+      font-weight: 500;
+    }
+
+    #playlist-col .col-heading {
+      text-align: right;
+    }
+
+    /* ---------------------------------------------------------
+       SPOTIFY EMBEDS
+       --------------------------------------------------------- */
+    .playlist-embeds {
+      display: flex;
+      flex-direction: column;
+      gap: 0.6em;
+      pointer-events: auto;
+    }
+
+    .spotify-embed {
+      width: 100%;
+      border-radius: 4px;
+      overflow: hidden;
+      filter: grayscale(1) contrast(1.35) brightness(0.9);
+      transition: filter 0.25s ease;
+    }
+
+    .spotify-embed:hover {
+      filter: grayscale(1) contrast(1.5) brightness(1.05);
+    }
+
+    .spotify-embed iframe {
+      display: block;
+      width: 100%;
+      height: 80px;
+      border: 0;
+    }
+
+    .info-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .info-list li {
+      font-size: clamp(15px, 1.9vw, 22px);
+      letter-spacing: 0.05em;
+      color: #ffffff;
+      line-height: 1.4;
+      margin: 0.7em 0;
+      position: relative;
+      opacity: 0;
+      transition: opacity 0.35s ease;
+    }
+
+    .info-list li.typed {
+      opacity: 0.92;
+    }
+
+    /* Projects items: clickable placeholders (wire up later) */
+    #projects-list li {
+      pointer-events: none;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    #projects-list li.selectable {
+      pointer-events: auto;
+    }
+
+    #projects-list li::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -0.18em;
+      height: 1.5px;
+      width: 100%;
+      background: #ffffff;
+      clip-path: inset(0 100% 0 0);
+      transition: clip-path 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+
+    #projects-list li.selectable:hover::after {
+      clip-path: inset(0 0 0 0);
+    }
+
+    /* ---- SOCIALS LIST ---- */
+    #socials-list li {
+      pointer-events: auto;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    #socials-list li a,
+    #socials-list li span.mail-link {
+      color: #ffffff;
+      text-decoration: none;
+      display: inline-block;
+      position: relative;
+    }
+
+    #socials-list li a::after,
+    #socials-list li span.mail-link::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: -0.18em;
+      height: 1.5px;
+      width: 100%;
+      background: #ffffff;
+      clip-path: inset(0 100% 0 0);
+      transition: clip-path 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+
+    #socials-list li a:hover::after,
+    #socials-list li span.mail-link:hover::after {
+      clip-path: inset(0 0 0 0);
+    }
+
+    .info-list li .cursor {
+      display: inline-block;
+      width: 0.6em;
+      height: 1em;
+      background: #ffffff;
+      margin-left: 0.15em;
+      vertical-align: -0.12em;
+      animation: blink 0.7s steps(1) infinite;
+    }
+
+    @keyframes blink {
+      0%, 50%   { opacity: 1; }
+      50.01%, 100% { opacity: 0; }
+    }
+
+    /* =========================================================
+       1990s CRT SCREEN-QUALITY TREATMENT
+       ========================================================= */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 9996;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse at center, rgba(255, 200, 130, 0.03) 0%, rgba(0, 0, 0, 0) 70%),
+        rgba(90, 70, 40, 0.02);
+      mix-blend-mode: screen;
+    }
+
+    #tv-static {
+      position: fixed;
+      inset: 0;
+      z-index: 9997;
+      pointer-events: none;
+      opacity: 0.10;
+      overflow: hidden;
+      background-image:
+        radial-gradient(rgba(255,255,255,0.9) 0.5px, transparent 0.6px),
+        radial-gradient(rgba(255,255,255,0.6) 0.5px, transparent 0.6px),
+        radial-gradient(rgba(200,200,200,0.5) 0.5px, transparent 0.6px);
+      background-size: 3px 3px, 5px 5px, 7px 7px;
+      background-position: 0 0, 1px 2px, 3px 1px;
+      will-change: background-position, opacity;
+    }
+
+    #crt-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(
+          to bottom,
+          rgba(0, 0, 0, 0.10) 0px,
+          rgba(0, 0, 0, 0.10) 1px,
+          rgba(0, 0, 0, 0.00) 1px,
+          rgba(0, 0, 0, 0.00) 3px
+        ),
+        repeating-linear-gradient(
+          to right,
+          rgba(255, 0, 0, 0.015) 0px,
+          rgba(255, 0, 0, 0.015) 1px,
+          rgba(0, 255, 0, 0.015) 1px,
+          rgba(0, 255, 0, 0.015) 2px,
+          rgba(0, 0, 255, 0.015) 2px,
+          rgba(0, 0, 255, 0.015) 3px
+        );
+      mix-blend-mode: multiply;
+      animation: crt-flicker 0.18s infinite steps(2);
+    }
+
+    @keyframes crt-flicker {
+      0%   { opacity: 0.98; }
+      50%  { opacity: 1.00; }
+      100% { opacity: 0.98; }
+    }
+
+    /* =========================================================
+       YOLO CURSOR BOX
+       ========================================================= */
+    #yolo-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9999;
+      overflow: hidden;
+    }
+
+    .yolo-box {
+      position: fixed;
+      border: 1px solid #ffffff;
+      pointer-events: none;
+      display: none;
+    }
+
+    .yolo-label {
+      position: absolute;
+      top: 0;
+      left: 0;
+      transform: translateY(-100%);
+      background: #ffffff;
+      color: #000000;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      font-size: 9.5px;
+      font-weight: 600;
+      line-height: 1.2;
+      padding: 1px 4px;
+      white-space: nowrap;
+      border-radius: 1px;
+    }
+  </style>
+</head>
+<body>
+  <img class="hand hand-left"  src="lefthand.png"  alt="" draggable="false" />
+  <img class="hand hand-right" src="righthand.png" alt="" draggable="false" />
+
+  <div id="click-hint">
+    <div class="hint-box">
+      <div class="hint-label" id="hint-label">hint 0.50 0.50 0.10 0.05</div>
+      <div class="hint-text">click</div>
+    </div>
+  </div>
+
+  <div id="sequence-container">
+    <div class="glow"></div>
+    <div class="title-text">gekkefries</div>
+  </div>
+
+  <div class="site-title">gekkefries</div>
+
+  <div id="head-wrap">
+    <img id="head-img" src="uphand.png" alt="" draggable="false" />
+  </div>
+
+  <div id="playlist-col" class="info-col">
+    <h2 class="col-heading">Playlist</h2>
+    <div class="playlist-embeds">
+      <div class="spotify-embed">
+        <iframe
+          src="https://open.spotify.com/embed/track/07QyYzVsdldnGygRZC8Q2w?utm_source=generator"
+          width="100%"
+          height="80"
+          frameborder="0"
+          allowfullscreen=""
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy">
+        </iframe>
+      </div>
+      <div class="spotify-embed">
+        <iframe
+          src="https://open.spotify.com/embed/track/5qG4mrKUlmGce1FA4wGrr7?utm_source=generator"
+          width="100%"
+          height="80"
+          frameborder="0"
+          allowfullscreen=""
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy">
+        </iframe>
+      </div>
+      <div class="spotify-embed">
+        <iframe
+          src="https://open.spotify.com/embed/track/6Nm8h73ycDG2saCnZV8poF?utm_source=generator"
+          width="100%"
+          height="80"
+          frameborder="0"
+          allowfullscreen=""
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy">
+        </iframe>
+      </div>
+      <div class="spotify-embed">
+        <iframe
+          src="https://open.spotify.com/embed/track/5WGvXmLt6acluR7TfhlHUH?utm_source=generator"
+          width="100%"
+          height="80"
+          frameborder="0"
+          allowfullscreen=""
+          allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+          loading="lazy">
+        </iframe>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right-side stack: Projects + Socials -->
+  <div id="right-stack">
+    <div id="projects-col" class="info-col">
+      <h2 class="col-heading">Projects</h2>
+      <ul id="projects-list" class="info-list">
+        <li data-label="placeholder"></li>
+        <li data-label="placeholder"></li>
+        <li data-label="placeholder"></li>
+      </ul>
+    </div>
+
+    <div id="socials-col" class="info-col">
+      <h2 class="col-heading">Socials</h2>
+      <ul id="socials-list" class="info-list">
+        <li><a href="https://discord.com/users/1147540007171670077" target="_blank" rel="noopener noreferrer">discord 1147540007171670077</a></li>
+        <li><a href="https://discord.com/users/1480184974920650855" target="_blank" rel="noopener noreferrer">discord (business) 1480184974920650855</a></li>
+        <li><a href="https://t.me/gekkefries" target="_blank" rel="noopener noreferrer">telegram : gekkefries</a></li>
+        <li><span class="mail-link" data-mail="gekkefries@proton.me">mail : gekkefries@proton.me</span></li>
+      </ul>
+    </div>
+  </div>
+
+  <div id="tv-static"></div>
+  <div id="crt-overlay"></div>
+  <div id="yolo-layer"></div>
+
+  <script>
+    (function () {
+      const leftImg   = document.querySelector('.hand-left');
+      const rightImg  = document.querySelector('.hand-right');
+      const hintEl    = document.getElementById('click-hint');
+      const hintBox   = hintEl.querySelector('.hint-box');
+      const hintLabel = document.getElementById('hint-label');
+      const titleEl   = document.querySelector('.title-text');
+      const headImg   = document.getElementById('head-img');
+      const headWrap  = document.getElementById('head-wrap');
+      const playlistCol = document.getElementById('playlist-col');
+      const rightStack  = document.getElementById('right-stack');
+      const projectsList = document.getElementById('projects-list');
+      const socialsList  = document.getElementById('socials-list');
+      const siteTitleEl  = document.querySelector('.site-title');
+
+      let sequenceRunning = false;
+
+      // ---------------------------------------------------------
+      // UPHAND NATURAL COORDINATES
+      // ---------------------------------------------------------
+      // Fingertip: (592, 0) — at the very top of the image.
+      // Real hand horizontal edges (left, right):
+      //   Right side of hand edge: (778, 269)  -> x = 778
+      //   Left side of hand edge:  (344, 1145) -> x = 344
+      // So the actual hand occupies x ∈ [344, 778] in natural px.
+      // The rest of the image is empty padding we don't want columns
+      // to overlap. The hand's true horizontal center is:
+      //   (344 + 778) / 2 = 561
+      // And its true width is 778 - 344 = 434.
+      const UPHAND_NAT = {
+        tipX: 592,
+        tipY: 0,
+        leftEdgeX: 344,
+        rightEdgeX: 778,
+        // natural image dimensions are read from the img element
+      };
+
+      // Where we want the fingertip to land, vertically, as a fraction
+      // of the viewport height (pushes the hand down below the title).
+      const UPHAND_TIP_TOP_VH = 26;
+
+      // Horizontal offset from viewport center to the "true hand" center.
+      // Applied so the visual hand is actually centered on screen, not
+      // the image's padding.
+      function computeUphandLayout() {
+        if (!headImg || !headImg.naturalWidth) return null;
+
+        const natW = headImg.naturalWidth;
+        const natH = headImg.naturalHeight;
+        if (!natW || !natH) return null;
+
+        const H = window.innerHeight;
+        const W = window.innerWidth;
+
+        // Aim: fingertip (natural y = 0) at (UPHAND_TIP_TOP_VH% of screen).
+        // The image will be placed with its bottom at the viewport bottom.
+        // So: rendered height = H - (tipTopPx)  (since tip is at image top)
+        const tipTopPx = H * (UPHAND_TIP_TOP_VH / 100);
+        const renderedH = Math.max(1, H - tipTopPx);
+        const scale = renderedH / natH;
+        const renderedW = natW * scale;
+
+        // Natural hand horizontal center in image space:
+        const handCenterNatX = (UPHAND_NAT.leftEdgeX + UPHAND_NAT.rightEdgeX) / 2;
+        // In rendered space:
+        const handCenterRenderedX = handCenterNatX * scale;
+
+        // We want the hand center to be at the viewport center. The
+        // wrapper is at left:50% with translateX(-50%), so its center
+        // is at W/2. The image's hand center sits at
+        // (renderedW/2 + offset), where offset = handCenterNatX*scale - renderedW/2.
+        // We need to shift the image right/left so the hand center lands at W/2.
+        const wrapCenterX = W / 2;
+        const imageLeftIfCentered = wrapCenterX - renderedW / 2;
+        const handCenterIfCentered = imageLeftIfCentered + handCenterRenderedX;
+        const shiftX = wrapCenterX - handCenterIfCentered; // shift image by this
+
+        // Real hand edges in viewport space after shift:
+        const handLeftVP  = imageLeftIfCentered + UPHAND_NAT.leftEdgeX  * scale + shiftX;
+        const handRightVP = imageLeftIfCentered + UPHAND_NAT.rightEdgeX * scale + shiftX;
+
+        return {
+          natW, natH, scale, renderedW, renderedH, shiftX,
+          handLeftVP, handRightVP,
+          tipTopPx
+        };
+      }
+
+      function fitUphand() {
+        if (!headImg) return;
+        const layout = computeUphandLayout();
+        if (!layout) return;
+
+        // Size the image
+        headImg.style.height = layout.renderedH + 'px';
+        headImg.style.width  = layout.renderedW + 'px';
+
+        // Shift horizontally so the visual hand center is screen-centered.
+        headWrap.style.transform = '';
+        headWrap.style.left = '50%';
+
+        // Apply per-state transforms via CSS variables instead so animation still works.
+        headWrap.style.setProperty('--uphand-shift-x', layout.shiftX + 'px');
+
+        // ---------------------------------------------------------
+        // POSITION SIDE COLUMNS TIGHT AGAINST THE REAL HAND EDGES
+        // ---------------------------------------------------------
+        const GAP = Math.max(12, window.innerWidth * 0.02);
+        const handLeft  = layout.handLeftVP;
+        const handRight = layout.handRightVP;
+
+        // Playlist column: its right edge sits just left of the hand's left edge
+        if (playlistCol) {
+          playlistCol.style.right = (window.innerWidth - handLeft + GAP) + 'px';
+        }
+
+        // Right stack (Projects + Socials): its left edge sits just right of the hand's right edge
+        if (rightStack) {
+          rightStack.style.left = (handRight + GAP) + 'px';
+        }
+      }
+
+      // ---------------------------------------------------------
+      // MAIL COPY
+      // ---------------------------------------------------------
+      if (socialsList) {
+        const mailSpan = socialsList.querySelector('.mail-link');
+        if (mailSpan) {
+          mailSpan.addEventListener('click', function (e) {
+            e.preventDefault();
+            const mail = this.getAttribute('data-mail') || 'gekkefries@proton.me';
+            navigator.clipboard.writeText(mail).then(() => {
+              const originalText = this.textContent;
+              this.textContent = 'COPIED!';
+              setTimeout(() => { this.textContent = originalText; }, 1200);
+            }).catch(() => {
+              const ta = document.createElement('textarea');
+              ta.value = mail;
+              document.body.appendChild(ta);
+              ta.select();
+              document.execCommand('copy');
+              document.body.removeChild(ta);
+              const originalText = this.textContent;
+              this.textContent = 'COPIED!';
+              setTimeout(() => { this.textContent = originalText; }, 1200);
+            });
+          });
+        }
+      }
+
+      function getFingertipGapPx() {
+        const W = window.innerWidth;
+        const restGapStr = getComputedStyle(document.documentElement).getPropertyValue('--rest-gap').trim();
+        const rightShiftStr = getComputedStyle(document.documentElement).getPropertyValue('--right-shift').trim();
+        const gapPx = W * (parseFloat(restGapStr) / 100);
+        const shiftPx = W * (parseFloat(rightShiftStr) / 100);
+        return gapPx + shiftPx;
+      }
+
+      function centerTitleBetweenFingertips() {
+        if (!titleEl) return;
+        const W = window.innerWidth;
+        const rightShiftStr = getComputedStyle(document.documentElement).getPropertyValue('--right-shift').trim();
+        const shiftPx = W * (parseFloat(rightShiftStr) / 100);
+        titleEl.style.setProperty('--title-dx', (shiftPx / 2) + 'px');
+      }
+
+      function fitTitleText() {
+        if (!titleEl) return;
+        centerTitleBetweenFingertips();
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        const gapPx = getFingertipGapPx();
+        const availableWidth = Math.max(gapPx, W * 0.3) * 0.82;
+        const availableHeight = H * 0.22;
+        const REF_SIZE = 100;
+        const prevInlineSize = titleEl.style.fontSize;
+        titleEl.style.fontSize = REF_SIZE + 'px';
+        const rect = titleEl.getBoundingClientRect();
+        const natWidth = rect.width;
+        const natHeight = rect.height;
+        if (!natWidth || !natHeight) {
+          titleEl.style.fontSize = prevInlineSize;
+          return;
+        }
+        const scaleByWidth = availableWidth / natWidth;
+        const scaleByHeight = availableHeight / natHeight;
+        const scale = Math.min(scaleByWidth, scaleByHeight);
+        let finalSize = REF_SIZE * scale;
+        finalSize = Math.max(14, Math.min(finalSize, 110));
+        titleEl.style.fontSize = finalSize + 'px';
+      }
+
+      function updateHintLabel() {
+        const r = hintBox.getBoundingClientRect();
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        const x_center = (r.left + r.width / 2) / W;
+        const y_center = (r.top + r.height / 2) / H;
+        const width = r.width / W;
+        const height = r.height / H;
+        hintLabel.textContent =
+          `hint ${x_center.toFixed(3)} ${y_center.toFixed(3)} ${width.toFixed(3)} ${height.toFixed(3)}`;
+      }
+
+      function ready(img, cb) {
+        if (img.complete && img.naturalWidth) cb();
+        else img.addEventListener('load', cb, { once: true });
+      }
+
+      function recomputeHands() {
+        const W = window.innerWidth;
+        const lh = leftImg.getBoundingClientRect();
+        const rh = rightImg.getBoundingClientRect();
+        if (!lh.width || !rh.width) return false;
+        const natW_L = leftImg.naturalWidth;
+        const natW_R = rightImg.naturalWidth;
+        if (!natW_L || !natW_R) return false;
+        const L_TIP_X = 2150, L_TIP_Y = 281;
+        const R_TIP_X = 3,    R_TIP_Y = 493;
+        const scaleL = lh.width / natW_L;
+        const scaleR = rh.width / natW_R;
+        const lTipLocalX = L_TIP_X * scaleL;
+        const lTipLocalY = L_TIP_Y * scaleL;
+        const rTipLocalX = R_TIP_X * scaleR;
+        const rTipLocalY = R_TIP_Y * scaleR;
+        const lCenterOffset = lTipLocalY - lh.height / 2;
+        const rCenterOffset = rTipLocalY - rh.height / 2;
+        const targetOffset = (lCenterOffset + rCenterOffset) / 2;
+        const leftDY  = targetOffset - lCenterOffset;
+        const rightDY = targetOffset - rCenterOffset;
+        const restGapStr = getComputedStyle(document.documentElement).getPropertyValue('--rest-gap').trim();
+        const rightShiftStr = getComputedStyle(document.documentElement).getPropertyValue('--right-shift').trim();
+        const gapPx = W * (parseFloat(restGapStr) / 100);
+        const shiftPx = W * (parseFloat(rightShiftStr) / 100);
+        const leftRestX = (W / 2) - (gapPx / 2) - lTipLocalX;
+        const rightRestX = (W / 2) + (gapPx / 2) + shiftPx - ((W - rh.width) + rTipLocalX);
+        const leftTouchX  = (W / 2) - lTipLocalX;
+        const rightTouchX = (W / 2) - ((W - rh.width) + rTipLocalX);
+        leftImg.style.setProperty('--dy', leftDY + 'px');
+        rightImg.style.setProperty('--dy', rightDY + 'px');
+        leftImg.style.setProperty('--rest-x-left', leftRestX + 'px');
+        rightImg.style.setProperty('--rest-x-right', rightRestX + 'px');
+        leftImg.style.setProperty('--touch-x-left', leftTouchX + 'px');
+        rightImg.style.setProperty('--touch-x-right', rightTouchX + 'px');
+        return true;
+      }
+
+      function updateLayout() {
+        fitTitleText();
+        updateHintLabel();
+        fitUphand();
+        const handsOk = recomputeHands();
+        if (handsOk && !document.body.classList.contains('ready')) {
+          setTimeout(() => {
+            document.body.classList.add('ready');
+            updateHintLabel();
+          }, 50);
+        }
+      }
+
+      let rafPending = false;
+      function scheduleUpdate() {
+        if (rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(() => {
+          rafPending = false;
+          updateLayout();
+        });
+      }
+
+      fitTitleText();
+
+      let loaded = 0;
+      const onOne = () => {
+        loaded++;
+        if (loaded === 2) {
+          requestAnimationFrame(updateLayout);
+        }
+      };
+      ready(leftImg, onOne);
+      ready(rightImg, onOne);
+
+      // Fit uphand once it's loaded (natural size needed)
+      ready(headImg, () => { fitUphand(); });
+
+      window.addEventListener('resize', scheduleUpdate);
+      window.addEventListener('orientationchange', scheduleUpdate);
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', scheduleUpdate);
+        window.visualViewport.addEventListener('scroll', scheduleUpdate);
+      }
+
+      function typeList(listEl, { selectable } = {}) {
+        return new Promise((resolve) => {
+          const items = Array.from(listEl.querySelectorAll('li'));
+          function typeItem(i) {
+            if (i >= items.length) { resolve(); return; }
+            const li = items[i];
+            const text = li.getAttribute('data-label') || '';
+            li.classList.add('typed');
+            if (listEl.id === 'socials-list') { typeItem(i+1); return; }
+            li.textContent = '';
+            const cursor = document.createElement('span');
+            cursor.className = 'cursor';
+            li.appendChild(cursor);
+            let idx = 0;
+            const speed = 24;
+            function step() {
+              if (idx < text.length) {
+                cursor.insertAdjacentText('beforebegin', text.charAt(idx));
+                idx++;
+                setTimeout(step, speed);
+              } else {
+                cursor.remove();
+                if (selectable) li.classList.add('selectable');
+                setTimeout(() => typeItem(i + 1), 120);
+              }
+            }
+            step();
+          }
+          typeItem(0);
+        });
+      }
+
+      function typeAllLists() {
+        typeList(projectsList, { selectable: true }).then(() => {
+          projectsList.querySelectorAll('li.selectable').forEach((li) => {
+            li.addEventListener('click', () => {
+              console.log('Project clicked:', li.textContent.trim());
+            });
+          });
+          const socialsItems = socialsList.querySelectorAll('li');
+          socialsItems.forEach((li, i) => {
+            setTimeout(() => { li.classList.add('typed'); }, i * 100);
+          });
+        });
+      }
+
+      document.body.addEventListener('click', function () {
+        if (!document.body.classList.contains('ready') || sequenceRunning) return;
+        sequenceRunning = true;
+        document.body.classList.add('has-clicked');
+        document.body.classList.add('touching');
+
+        setTimeout(() => { document.body.classList.add('sequence-glow'); }, 600);
+
+        setTimeout(() => {
+          document.body.classList.remove('touching');
+          document.body.classList.add('sequence-active');
+          document.body.classList.add('sequence-stretch');
+          setTimeout(() => {
+            document.body.classList.add('sequence-text');
+            document.body.classList.add('sequence-fade');
+          }, 400);
+        }, 1600);
+
+        setTimeout(() => {
+          document.body.classList.add('hands-exiting');
+          setTimeout(() => {
+            leftImg.removeAttribute('src');
+            rightImg.removeAttribute('src');
+            leftImg.style.display = 'none';
+            rightImg.style.display = 'none';
+          }, 1200);
+
+          // Show content (side columns + site title) first
+          setTimeout(() => {
+            document.body.classList.add('head-visible');
+            // Re-fit uphand now that it's about to be shown (viewport stable)
+            fitUphand();
+
+            // Give content a beat to appear, THEN slide uphand up
+            setTimeout(() => {
+              document.body.classList.add('uphand-visible');
+              typeAllLists();
+            }, 900);
+          }, 900);
+        }, 4700);
+      });
+    })();
+
+    (function () {
+      const staticEl = document.getElementById('tv-static');
+      function tick() {
+        const ox = (Math.random() * 10 - 5).toFixed(1);
+        const oy = (Math.random() * 10 - 5).toFixed(1);
+        staticEl.style.backgroundPosition =
+          ox + 'px ' + oy + 'px, ' +
+          (Math.random() * 6).toFixed(1) + 'px ' + (Math.random() * 6).toFixed(1) + 'px, ' +
+          (Math.random() * 8).toFixed(1) + 'px ' + (Math.random() * 8).toFixed(1) + 'px';
+        staticEl.style.opacity = (0.08 + Math.random() * 0.05).toFixed(3);
+        requestAnimationFrame(tick);
+      }
+      tick();
+    })();
+
+    (function () {
+      const layer = document.getElementById('yolo-layer');
+      const CURSOR_SIZE = 24;
+      const cursorBox = document.createElement('div');
+      cursorBox.className = 'yolo-box';
+      const cursorLabel = document.createElement('span');
+      cursorLabel.className = 'yolo-label';
+      cursorBox.appendChild(cursorLabel);
+      layer.appendChild(cursorBox);
+
+      let mx = 0, my = 0, hasMouse = false;
+      window.addEventListener('mousemove', function (e) {
+        mx = e.clientX; my = e.clientY; hasMouse = true;
+      });
+      document.addEventListener('mouseleave', function () { hasMouse = false; });
+
+      function update() {
+        const W = window.innerWidth, H = window.innerHeight;
+        if (hasMouse) {
+          const half = CURSOR_SIZE / 2;
+          const x = mx - half; const y = my - half;
+          cursorBox.style.display = 'block';
+          cursorBox.style.left   = x + 'px';
+          cursorBox.style.top    = y + 'px';
+          cursorBox.style.width  = CURSOR_SIZE + 'px';
+          cursorBox.style.height = CURSOR_SIZE + 'px';
+          const x_center = mx / W;
+          const y_center = my / H;
+          const width = CURSOR_SIZE / W;
+          const height = CURSOR_SIZE / H;
+          cursorLabel.textContent =
+            `mouse_cursor ${x_center.toFixed(3)} ${y_center.toFixed(3)} ${width.toFixed(3)} ${height.toFixed(3)}`;
+        } else {
+          cursorBox.style.display = 'none';
+        }
+      }
+      update();
+      setInterval(update, 66);
+    })();
+  </script>
+</body>
+</html>
