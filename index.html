@@ -625,58 +625,18 @@
       /* Hide the YOLO cursor box entirely on touch/mobile */
       #yolo-layer { display: none !important; }
 
-      /* On mobile, columns can overlap the hand — JS only sets a
-         fixed margin between playlist and the right stack.
-         Give playlist a wider column so embeds are bigger. */
-      #playlist-col {
-        right: auto;
-        left: 3vw;
-        text-align: left;
-        width: 46vw;
-        max-width: 46vw;
-      }
-      #playlist-col .col-heading { text-align: left; }
-      /* Right stack: top-aligned (not vertically centered) so it
-         sits beside the playlist, with a fixed width and a tighter
-         gap so Projects + Socials fit without crowding. */
+      /* ----- HIDE PLAYLIST ON MOBILE ----- */
+      #playlist-col { display: none !important; }
+
+      /* Right stack (Projects + Socials) gets more room since
+         the playlist is gone. Allow it to overlap the up-hand. */
       #right-stack {
         left: auto;
-        right: 3vw;
-        top: 30vh;
-        transform: none;
+        right: 4vw;
         text-align: right;
-        width: 44vw;
-        max-width: 44vw;
-        gap: 1.4em;
-        align-items: flex-end;
+        max-width: 52vw;
       }
-      #right-stack .info-col {
-        text-align: right;
-        width: 100%;
-      }
-      #right-stack .col-heading {
-        font-size: 10px;
-        letter-spacing: 0.14em;
-        margin-bottom: 0.5em;
-      }
-      #projects-list li {
-        font-size: 11px;
-        min-height: 1.4em;
-        margin: 0.4em 0;
-      }
-      #socials-list li {
-        font-size: 9.5px;
-        letter-spacing: 0.02em;
-        line-height: 1.35;
-        margin: 0.55em 0;
-        overflow-wrap: anywhere;
-        word-break: break-word;
-      }
-      #socials-list li a,
-      #socials-list li span.mail-link {
-        display: inline-block;
-        max-width: 100%;
-      }
+      #right-stack .info-col { text-align: right; }
       #projects-list li::after,
       #socials-list li a::after,
       #socials-list li span.mail-link::after {
@@ -686,7 +646,7 @@
       #projects-list li,
       #socials-list li { text-align: right; }
 
-      /* Shrink list font sizes so they fit comfortably side-by-side */
+      /* List font sizes */
       .info-list li {
         font-size: 12px;
         margin: 0.5em 0;
@@ -694,24 +654,6 @@
       .col-heading {
         font-size: 11px;
         margin-bottom: 0.6em;
-      }
-
-      /* -------------------------------------------------------
-         SPOTIFY EMBEDS — let the iframe scale fluidly to the
-         column width (Spotify's embed is designed for this).
-         Give each player a taller height so the compact layout
-         renders full content without clipping.
-         ------------------------------------------------------- */
-      .spotify-embed {
-        position: relative;
-        width: 100%;
-        overflow: hidden;
-      }
-      .spotify-embed iframe {
-        position: static;
-        width: 100% !important;
-        height: 100px !important;
-        transform: none !important;
       }
     }
   </style>
@@ -828,7 +770,6 @@
       const rightStack  = document.getElementById('right-stack');
       const projectsList = document.getElementById('projects-list');
       const socialsList  = document.getElementById('socials-list');
-      const siteTitleEl  = document.querySelector('.site-title');
 
       // Detect mobile (touch + narrow viewport)
       const isMobile = () =>
@@ -839,9 +780,7 @@
 
       // ---------------------------------------------------------
       // SPOTIFY EMBEDS
-      // On mobile we simply let the native fluid iframe handle it.
-      // On desktop we keep the default 80px compact height.
-      // No more fixed-scale hacks.
+      // Desktop keeps 80px height; mobile hides the whole column.
       // ---------------------------------------------------------
       function fitSpotifyEmbeds() {
         const embeds = document.querySelectorAll('.spotify-embed');
@@ -851,8 +790,6 @@
         embeds.forEach((embed) => {
           const iframe = embed.querySelector('iframe');
           if (!iframe) return;
-
-          // Clear any inline styles from previous experiments
           embed.style.height = '';
           iframe.style.position = '';
           iframe.style.top = '';
@@ -861,11 +798,7 @@
           iframe.style.transformOrigin = '';
           iframe.style.width = '';
           iframe.style.height = '';
-
-          // Desktop height stays 80; mobile handles via CSS
-          if (!mobile) {
-            iframe.style.height = '80px';
-          }
+          if (!mobile) iframe.style.height = '80px';
         });
       }
 
@@ -927,8 +860,10 @@
         headWrap.style.setProperty('--uphand-shift-x', layout.shiftX + 'px');
 
         if (isMobile()) {
-          playlistCol.style.right = '';
-          rightStack.style.left = '';
+          // Playlist is hidden; clear any JS positioning on it
+          if (playlistCol) playlistCol.style.right = '';
+          // Right stack is positioned via mobile CSS
+          if (rightStack) rightStack.style.left = '';
           return;
         }
 
