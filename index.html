@@ -313,11 +313,21 @@
       max-width: clamp(150px, 27vw, 270px);
       opacity: 0;
       transition: opacity 0.6s ease;
+      /* Block ALL pointer interaction until the reveal completes */
+      pointer-events: none;
     }
 
     body.head-visible .info-col {
       opacity: 1;
       transition-delay: 0.3s;
+    }
+
+    /* Only once the reveal has fully finished do the columns
+       become clickable — this prevents ghost clicks on the first
+       screen from hitting hidden links/buttons. */
+    body.uphand-visible #playlist-col,
+    body.uphand-visible #right-stack {
+      pointer-events: auto;
     }
 
     #playlist-col {
@@ -337,6 +347,7 @@
       font-family: 'JetBrains Mono', ui-monospace, monospace;
       opacity: 0;
       transition: opacity 0.6s ease;
+      pointer-events: none;
     }
 
     #right-stack .fit-inner {
@@ -357,6 +368,12 @@
       max-width: none;
       opacity: 1;
       transition: none;
+      pointer-events: none;
+    }
+
+    /* Re-enable pointer events on the inner columns only after reveal */
+    body.uphand-visible #right-stack .info-col {
+      pointer-events: auto;
     }
 
     .col-heading {
