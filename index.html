@@ -256,7 +256,6 @@
       left: 50%;
       transform: translateX(-50%);
       z-index: 4;
-      /* Same family as the intro title */
       font-family: 'Pirata One', serif;
       font-size: clamp(48px, min(max(18vw, 80px), 25vh), 240px);
       color: #ffffff;
@@ -268,10 +267,17 @@
       pointer-events: none;
       opacity: 0;
       transition: opacity 1.2s ease;
+      /* Arch: each letter is nudged vertically so the center bows up
+         and the outer edges drop slightly, giving a gentle curve. */
     }
 
     body.head-visible .site-title {
       opacity: 1;
+    }
+
+    .site-title .ch {
+      display: inline-block;
+      will-change: transform;
     }
 
     /* ---- UP-HAND WRAPPER ---- */
@@ -645,7 +651,7 @@
     <div class="title-text">gekkefries</div>
   </div>
 
-  <div class="site-title">gekkefries</div>
+  <div class="site-title" id="site-title"></div>
 
   <div id="head-wrap">
     <img id="head-img" src="uphand.png" alt="" draggable="false" />
@@ -734,7 +740,7 @@
       const leftImg   = document.querySelector('.hand-left');
       const rightImg  = document.querySelector('.hand-right');
       const titleEl   = document.querySelector('.title-text');
-      const siteTitle = document.querySelector('.site-title');
+      const siteTitle = document.getElementById('site-title');
       const headImg   = document.getElementById('head-img');
       const headWrap  = document.getElementById('head-wrap');
       const playlistCol = document.getElementById('playlist-col');
@@ -745,6 +751,49 @@
       const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
 
       let sequenceRunning = false;
+
+      // ---------------------------------------------------------
+      // BUILD ARCHED SITE TITLE
+      // Each character gets its own <span> so we can push the
+      // middle ones up and the outer ones down, producing a gentle
+      // arch. The curve is a shallow parabola scaled by font-size.
+      // ---------------------------------------------------------
+      const SITE_TITLE_TEXT = 'gekkefries';
+      let siteTitleChars = [];
+
+      function buildArchedTitle() {
+        if (!siteTitle) return;
+        siteTitle.innerHTML = '';
+        siteTitleChars = [];
+        for (let i = 0; i < SITE_TITLE_TEXT.length; i++) {
+          const span = document.createElement('span');
+          span.className = 'ch';
+          span.textContent = SITE_TITLE_TEXT[i];
+          siteTitle.appendChild(span);
+          siteTitleChars.push(span);
+        }
+        applyArch();
+      }
+
+      function applyArch() {
+        if (!siteTitle || !siteTitleChars.length) return;
+        const n = siteTitleChars.length;
+        if (n < 2) return;
+
+        // Arch depth as a fraction of font-size. Small = subtle.
+        const fsPx = parseFloat(getComputedStyle(siteTitle).fontSize) || 120;
+        const depth = fsPx * 0.10; // max lift/drop of the arch
+
+        // For each char, t goes from -1 (left) → 0 (center) → +1 (right)
+        // Parabola y = t^2, so center = 0 (highest), edges = 1 (lowest).
+        for (let i = 0; i < n; i++) {
+          const t = (i / (n - 1)) * 2 - 1; // -1..1
+          const lift = depth * (t * t);    // 0 at center, depth at edges
+          // Positive translateY moves DOWN; we want center up, edges down,
+          // so translate by (lift) but offset so the whole word is centered.
+          siteTitleChars[i].style.transform = `translateY(${lift - depth * 0.5}px)`;
+        }
+      }
 
       // ---------------------------------------------------------
       // BFCACHE / REFRESH SAFETY (mobile fix)
@@ -1066,6 +1115,7 @@
         fitTitleText();
         fitUphand();
         fitSpotifyEmbeds();
+        applyArch();
         if (leftImg.style.display === 'none') return;
         const handsOk = recomputeHands();
         if (handsOk && !document.body.classList.contains('ready')) {
@@ -1084,6 +1134,9 @@
           updateLayout();
         });
       }
+
+      // Build the arched title up front so its span structure exists
+      buildArchedTitle();
 
       fitTitleText();
 
@@ -1184,6 +1237,7 @@
             document.body.classList.add('head-visible');
             fitUphand();
             fitSpotifyEmbeds();
+            applyArch();
 
             setTimeout(() => {
               document.body.classList.add('uphand-visible');
