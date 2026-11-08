@@ -62,9 +62,6 @@
       filter: grayscale(1) contrast(1.9) brightness(1.1);
 
       transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s ease;
-      /* will-change removed: it forced a permanent GPU layer for each huge
-         hand image, which on mobile could make the left one fail to render
-         when memory was tight (e.g. refreshing mid-animation). */
       z-index: 2;
       pointer-events: none;
       opacity: 0;
@@ -276,8 +273,6 @@
       transform: translateX(-50%);
       z-index: 4;
       font-family: 'BlackRotting', 'Pirata One', serif;
-      /* limited by BOTH width and height so short/small desktop windows
-         don't let the title eat the space the lists need */
       font-size: clamp(48px, min(max(18vw, 80px), 25vh), 240px);
       color: #ffffff;
       letter-spacing: 0.03em;
@@ -324,7 +319,6 @@
 
     /* =========================================================
        SIDE COLUMNS
-       (positioned dynamically by JS using uphand's real edges)
        ========================================================= */
     .info-col {
       position: fixed;
@@ -347,13 +341,10 @@
       max-width: none;
     }
 
-    /* Inner wrapper that JS scales (zoom) so each column always fits the
-       free space between the title, the hand and the screen edges. */
     .fit-inner {
       width: 300px;
     }
 
-    /* --- Right stack container: Projects + Socials, no overlap --- */
     #right-stack {
       position: fixed;
       top: 50%;
@@ -448,9 +439,8 @@
       opacity: 0.92;
     }
 
-    /* Projects items: clickable placeholders (wire up later) */
     #projects-list li {
-      min-height: 1.4em; /* reserve height so layout doesn't jump while typing */
+      min-height: 1.4em;
       pointer-events: none;
       cursor: pointer;
       text-transform: uppercase;
@@ -477,7 +467,6 @@
       clip-path: inset(0 0 0 0);
     }
 
-    /* ---- SOCIALS LIST ---- */
     #socials-list li {
       pointer-events: auto;
       cursor: pointer;
@@ -590,44 +579,9 @@
     }
 
     /* =========================================================
-       YOLO CURSOR BOX
-       ========================================================= */
-    #yolo-layer {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 9999;
-      overflow: hidden;
-    }
-
-    .yolo-box {
-      position: fixed;
-      border: 1px solid #ffffff;
-      pointer-events: none;
-      display: none;
-    }
-
-    .yolo-label {
-      position: absolute;
-      top: 0;
-      left: 0;
-      transform: translateY(-100%);
-      background: #ffffff;
-      color: #000000;
-      font-family: 'JetBrains Mono', ui-monospace, monospace;
-      font-size: 9.5px;
-      font-weight: 600;
-      line-height: 1.2;
-      padding: 1px 4px;
-      white-space: nowrap;
-      border-radius: 1px;
-    }
-
-    /* =========================================================
        MOBILE OVERRIDES
        ========================================================= */
     @media (max-width: 768px) {
-      /* Smaller click hint */
       .hint-box {
         font-size: 13px;
         padding: 0.5em 0.9em;
@@ -636,14 +590,9 @@
         font-size: 0.6em;
       }
 
-      /* Hide the YOLO cursor box entirely on touch/mobile */
-      #yolo-layer { display: none !important; }
-
       /* ----- HIDE PLAYLIST ON MOBILE ----- */
       #playlist-col { display: none !important; }
 
-      /* Right stack (Projects + Socials) gets a bigger share of
-         the screen since the playlist is gone. */
       #right-stack {
         left: auto;
         right: 4vw;
@@ -660,7 +609,6 @@
       #projects-list li,
       #socials-list li { text-align: right; }
 
-      /* ----- BIGGER LIST SIZES (playlist removed = more room) ----- */
       .info-list li {
         font-size: 17px;
         letter-spacing: 0.06em;
@@ -674,8 +622,6 @@
       }
     }
 
-    /* Extra small phones: slightly trim to keep lists from wrapping
-       too aggressively */
     @media (max-width: 420px) {
       .info-list li {
         font-size: 15px;
@@ -690,8 +636,6 @@
   </style>
 </head>
 <body>
-  <!-- src is assigned from JS (see loadHand) so each hand can be decoded and
-       retried if the mobile browser fails to render it after a refresh. -->
   <img class="hand hand-left"  data-src="lefthand.png"  alt="" draggable="false" decoding="async" />
   <img class="hand hand-right" data-src="righthand.png" alt="" draggable="false" decoding="async" />
 
@@ -765,7 +709,6 @@
    </div>
   </div>
 
-  <!-- Right-side stack: Projects + Socials -->
   <div id="right-stack">
    <div class="fit-inner">
     <div id="projects-col" class="info-col">
@@ -791,7 +734,6 @@
 
   <div id="tv-static"></div>
   <div id="crt-overlay"></div>
-  <div id="yolo-layer"></div>
 
   <script>
     (function () {
@@ -809,20 +751,12 @@
       const projectsList = document.getElementById('projects-list');
       const socialsList  = document.getElementById('socials-list');
 
-      // Detect mobile (touch + narrow viewport)
-      // Same breakpoint as the CSS, so JS and CSS never disagree
       const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
 
       let sequenceRunning = false;
 
       // ---------------------------------------------------------
       // BFCACHE / REFRESH SAFETY (mobile fix)
-      // The hand images are huge. If the page is refreshed mid-animation,
-      // the old page can still be holding their decoded bitmaps, and on
-      // mobile the left one could fail to render on the new page (only the
-      // right hand appeared). Releasing the images when the page is hidden
-      // frees that memory, and a page restored from bfcache is reloaded
-      // so it always starts from a clean state.
       // ---------------------------------------------------------
       function releaseHands() {
         [leftImg, rightImg].forEach((img) => {
@@ -837,8 +771,6 @@
 
       // ---------------------------------------------------------
       // ROBUST HAND LOADER
-      // Loads, fully decodes and verifies the image; retries with a
-      // cache-buster if the browser hands back a broken/empty image.
       // ---------------------------------------------------------
       function loadHand(img, src, attempt) {
         attempt = attempt || 0;
@@ -887,7 +819,6 @@
 
       // ---------------------------------------------------------
       // SPOTIFY EMBEDS
-      // Desktop keeps 80px height; mobile hides the whole column.
       // ---------------------------------------------------------
       function fitSpotifyEmbeds() {
         const embeds = document.querySelectorAll('.spotify-embed');
@@ -971,10 +902,6 @@
 
       // ---------------------------------------------------------
       // ADAPTIVE COLUMNS
-      // Free zone vertically = below the title, above a bottom margin.
-      // Free zone horizontally = between the screen edge and the hand.
-      // Each column is measured at natural size, then scaled (zoom on the
-      // inner wrapper) so it fits both dimensions, and centred in the zone.
       // ---------------------------------------------------------
       function fitColumn(outer, natW, availW, maxZoom, zoneTop, zoneH) {
         const inner = outer.querySelector('.fit-inner');
@@ -1161,7 +1088,6 @@
         updateHintLabel();
         fitUphand();
         fitSpotifyEmbeds();
-        // Don't touch the hands once the exit sequence has removed them
         if (leftImg.style.display === 'none') return;
         const handsOk = recomputeHands();
         if (handsOk && !document.body.classList.contains('ready')) {
@@ -1184,8 +1110,6 @@
 
       fitTitleText();
 
-      // Load the hands ONE AFTER ANOTHER (lower peak memory on mobile),
-      // fully decoded, then lay out and reveal.
       (async function loadBothHands() {
         await loadHand(leftImg,  leftImg.getAttribute('data-src'));
         await loadHand(rightImg, rightImg.getAttribute('data-src'));
@@ -1194,7 +1118,6 @@
 
       ready(headImg, () => { fitUphand(); });
 
-      // Web fonts change text metrics, so re-fit once they're loaded
       if (document.fonts && document.fonts.ready) {
         document.fonts.ready.then(scheduleUpdate);
       }
@@ -1307,53 +1230,6 @@
         requestAnimationFrame(tick);
       }
       tick();
-    })();
-
-    (function () {
-      const layer = document.getElementById('yolo-layer');
-      const CURSOR_SIZE = 24;
-      const cursorBox = document.createElement('div');
-      cursorBox.className = 'yolo-box';
-      const cursorLabel = document.createElement('span');
-      cursorLabel.className = 'yolo-label';
-      cursorBox.appendChild(cursorLabel);
-      layer.appendChild(cursorBox);
-
-      // Only run on devices with a real mouse (not touch)
-      const isTouch = window.matchMedia('(pointer: coarse)').matches ||
-                      'ontouchstart' in window;
-
-      let mx = 0, my = 0, hasMouse = false;
-      if (!isTouch) {
-        window.addEventListener('mousemove', function (e) {
-          mx = e.clientX; my = e.clientY; hasMouse = true;
-        });
-        document.addEventListener('mouseleave', function () { hasMouse = false; });
-      }
-
-      function update() {
-        if (isTouch) { cursorBox.style.display = 'none'; return; }
-        const W = window.innerWidth, H = window.innerHeight;
-        if (hasMouse) {
-          const half = CURSOR_SIZE / 2;
-          const x = mx - half; const y = my - half;
-          cursorBox.style.display = 'block';
-          cursorBox.style.left   = x + 'px';
-          cursorBox.style.top    = y + 'px';
-          cursorBox.style.width  = CURSOR_SIZE + 'px';
-          cursorBox.style.height = CURSOR_SIZE + 'px';
-          const x_center = mx / W;
-          const y_center = my / H;
-          const width = CURSOR_SIZE / W;
-          const height = CURSOR_SIZE / H;
-          cursorLabel.textContent =
-            `mouse_cursor ${x_center.toFixed(3)} ${y_center.toFixed(3)} ${width.toFixed(3)} ${height.toFixed(3)}`;
-        } else {
-          cursorBox.style.display = 'none';
-        }
-      }
-      update();
-      setInterval(update, 66);
     })();
   </script>
 </body>
