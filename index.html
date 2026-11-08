@@ -750,6 +750,10 @@
       // of the viewport height (pushes the hand down below the title).
       const UPHAND_TIP_TOP_VH = 26;
 
+      // Mobile breakpoint — below this width, side columns are allowed
+      // to overlap the uphand and use a fixed safe margin instead.
+      const MOBILE_BP = 768;
+
       // Horizontal offset from viewport center to the "true hand" center.
       // Applied so the visual hand is actually centered on screen, not
       // the image's padding.
@@ -814,20 +818,44 @@
         headWrap.style.setProperty('--uphand-shift-x', layout.shiftX + 'px');
 
         // ---------------------------------------------------------
-        // POSITION SIDE COLUMNS TIGHT AGAINST THE REAL HAND EDGES
+        // POSITION SIDE COLUMNS
         // ---------------------------------------------------------
-        const GAP = Math.max(12, window.innerWidth * 0.02);
-        const handLeft  = layout.handLeftVP;
-        const handRight = layout.handRightVP;
+        const isMobile = window.innerWidth <= MOBILE_BP;
 
-        // Playlist column: its right edge sits just left of the hand's left edge
-        if (playlistCol) {
-          playlistCol.style.right = (window.innerWidth - handLeft + GAP) + 'px';
-        }
+        if (isMobile) {
+          // On mobile, allow columns to overlap the uphand.
+          // Use a fixed safe margin from screen edges, and guarantee
+          // a margin between the playlist and the right stack.
+          const EDGE_MARGIN = Math.max(10, window.innerWidth * 0.03);
+          const INNER_GAP   = Math.max(16, window.innerWidth * 0.04);
 
-        // Right stack (Projects + Socials): its left edge sits just right of the hand's right edge
-        if (rightStack) {
-          rightStack.style.left = (handRight + GAP) + 'px';
+          if (playlistCol) {
+            playlistCol.style.right = EDGE_MARGIN + 'px';
+            // Constrain width so it doesn't run into the right stack
+            const halfW = (window.innerWidth - EDGE_MARGIN * 2 - INNER_GAP) / 2;
+            playlistCol.style.maxWidth = halfW + 'px';
+          }
+          if (rightStack) {
+            rightStack.style.left = '';
+            rightStack.style.right = EDGE_MARGIN + 'px';
+            const halfW = (window.innerWidth - EDGE_MARGIN * 2 - INNER_GAP) / 2;
+            rightStack.style.maxWidth = halfW + 'px';
+          }
+        } else {
+          // Desktop: hug the real hand edges tightly.
+          const GAP = Math.max(12, window.innerWidth * 0.02);
+          const handLeft  = layout.handLeftVP;
+          const handRight = layout.handRightVP;
+
+          if (playlistCol) {
+            playlistCol.style.right = (window.innerWidth - handLeft + GAP) + 'px';
+            playlistCol.style.maxWidth = '';
+          }
+          if (rightStack) {
+            rightStack.style.left = (handRight + GAP) + 'px';
+            rightStack.style.right = '';
+            rightStack.style.maxWidth = '';
+          }
         }
       }
 
