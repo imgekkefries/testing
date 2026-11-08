@@ -62,7 +62,9 @@
       filter: grayscale(1) contrast(1.9) brightness(1.1);
 
       transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.5s ease;
-      will-change: transform, opacity;
+      /* will-change removed: it forced a permanent GPU layer for each huge
+         hand image, which on mobile could make the left one fail to render
+         when memory was tight (e.g. refreshing mid-animation). */
       z-index: 2;
       pointer-events: none;
       opacity: 0;
@@ -680,8 +682,10 @@
   </style>
 </head>
 <body>
-  <img class="hand hand-left"  src="lefthand.png"  alt="" draggable="false" />
-  <img class="hand hand-right" src="righthand.png" alt="" draggable="false" />
+  <!-- src is assigned from JS (see loadHand) so each hand can be decoded and
+       retried if the mobile browser fails to render it after a refresh. -->
+  <img class="hand hand-left"  data-src="lefthand.png"  alt="" draggable="false" decoding="async" />
+  <img class="hand hand-right" data-src="righthand.png" alt="" draggable="false" decoding="async" />
 
   <div id="click-hint">
     <div class="hint-box">
@@ -778,55 +782,6 @@
   <div id="yolo-layer"></div>
 
   <script>
-    // =========================================================
-    // BFCACHE GUARD
-    // When the user starts the intro animation and refreshes
-    // mid-way, the browser may restore the page from the
-    // back/forward cache in a partially-frozen state — e.g. the
-    // left hand's src has already been cleared by the interrupted
-    // animation, so on refresh only the right hand appears.
-    //
-    // Fix: if the page is restored from bfcache while the intro
-    // sequence had already started, force a full reload so the
-    // page boots fresh with both hands intact.
-    // =========================================================
-    (function () {
-      // Mark when the page is put into bfcache
-      window.addEventListener('pagehide', function () {
-        // If the animation was already triggered, mark so we know
-        // on restore that we're in a half-finished state.
-        if (document.body.classList.contains('has-clicked')) {
-          try { sessionStorage.setItem('gekkefries-interrupted', '1'); } catch (e) {}
-        }
-      });
-
-      window.addEventListener('pageshow', function (e) {
-        const wasInterrupted = (() => {
-          try { return sessionStorage.getItem('gekkefries-interrupted') === '1'; }
-          catch (err) { return false; }
-        })();
-
-        // If restored from bfcache AND the intro was mid-sequence,
-        // force a hard reload so both hands are present again.
-        if (e.persisted && (wasInterrupted || document.body.classList.contains('has-clicked'))) {
-          try { sessionStorage.removeItem('gekkefries-interrupted'); } catch (err) {}
-          // location.reload() bypasses bfcache on the reload
-          window.location.reload();
-          return;
-        }
-
-        // Also handle the case where the left hand image is missing
-        // but we're supposedly at the start of the page — recover.
-        const leftImg = document.querySelector('.hand-left');
-        if (leftImg && !leftImg.getAttribute('src') &&
-            !document.body.classList.contains('head-visible')) {
-          // Left hand lost its src but we haven't entered the final
-          // page yet — reload to recover cleanly.
-          window.location.reload();
-        }
-      });
-    })();
-
     (function () {
       const leftImg   = document.querySelector('.hand-left');
       const rightImg  = document.querySelector('.hand-right');
@@ -847,6 +802,76 @@
         ('ontouchstart' in window && window.innerWidth < 900);
 
       let sequenceRunning = false;
+
+      // ---------------------------------------------------------
+      // BFCACHE / REFRESH SAFETY (mobile fix)
+      // The hand images are huge. If the page is refreshed mid-animation,
+      // the old page can still be holding their decoded bitmaps, and on
+      // mobile the left one could fail to render on the new page (only the
+      // right hand appeared). Releasing the images when the page is hidden
+      // frees that memory, and a page restored from bfcache is reloaded
+      // so it always starts from a clean state.
+      // ---------------------------------------------------------
+      function releaseHands() {
+        [leftImg, rightImg].forEach((img) => {
+          if (img) img.removeAttribute('src');
+        });
+      }
+      window.addEventListener('pagehide', releaseHands);
+      window.addEventListener('beforeunload', releaseHands);
+      window.addEventListener('pageshow', (e) => {
+        if (e.persisted) location.reload();
+      });
+
+      // ---------------------------------------------------------
+      // ROBUST HAND LOADER
+      // Loads, fully decodes and verifies the image; retries with a
+      // cache-buster if the browser hands back a broken/empty image.
+      // ---------------------------------------------------------
+      function loadHand(img, src, attempt) {
+        attempt = attempt || 0;
+        return new Promise((resolve) => {
+          let settled = false;
+
+          function cleanup() {
+            img.removeEventListener('load', onLoad);
+            img.removeEventListener('error', onFail);
+          }
+          function finish(ok) {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            resolve(ok);
+          }
+          function retry() {
+            if (settled) return;
+            settled = true;
+            cleanup();
+            if (attempt >= 4) { resolve(false); return; }
+            img.removeAttribute('src');
+            setTimeout(() => {
+              loadHand(img, src + '?r=' + Date.now() + '_' + attempt, attempt + 1)
+                .then(resolve);
+            }, 250 * (attempt + 1));
+          }
+          function onFail() { retry(); }
+          function onLoad() {
+            if (!img.naturalWidth) { retry(); return; }
+            if (typeof img.decode === 'function') {
+              img.decode().then(() => {
+                if (img.naturalWidth) finish(true); else retry();
+              }).catch(retry);
+            } else {
+              finish(true);
+            }
+          }
+
+          img.addEventListener('load', onLoad);
+          img.addEventListener('error', onFail);
+          img.src = src;
+          if (img.complete && img.naturalWidth) onLoad();
+        });
+      }
 
       // ---------------------------------------------------------
       // SPOTIFY EMBEDS
@@ -1078,6 +1103,8 @@
         updateHintLabel();
         fitUphand();
         fitSpotifyEmbeds();
+        // Don't touch the hands once the exit sequence has removed them
+        if (leftImg.style.display === 'none') return;
         const handsOk = recomputeHands();
         if (handsOk && !document.body.classList.contains('ready')) {
           setTimeout(() => {
@@ -1099,15 +1126,13 @@
 
       fitTitleText();
 
-      let loaded = 0;
-      const onOne = () => {
-        loaded++;
-        if (loaded === 2) {
-          requestAnimationFrame(updateLayout);
-        }
-      };
-      ready(leftImg, onOne);
-      ready(rightImg, onOne);
+      // Load the hands ONE AFTER ANOTHER (lower peak memory on mobile),
+      // fully decoded, then lay out and reveal.
+      (async function loadBothHands() {
+        await loadHand(leftImg,  leftImg.getAttribute('data-src'));
+        await loadHand(rightImg, rightImg.getAttribute('data-src'));
+        requestAnimationFrame(updateLayout);
+      })();
 
       ready(headImg, () => { fitUphand(); });
 
