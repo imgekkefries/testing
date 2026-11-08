@@ -6,7 +6,7 @@
   <title></title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Pirata+One&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     @font-face {
       font-family: 'BlackRotting';
@@ -125,7 +125,7 @@
     }
 
     /* =========================================================
-       CLICK HINT
+       CLICK HINT — no box, just elegant script-like text
        ========================================================= */
     #click-hint {
       position: fixed;
@@ -149,8 +149,6 @@
     }
 
     .hint-box {
-      font-size: clamp(15px, 2.2vw, 19px);
-      border: max(1px, 0.08em) solid #ffffff;
       padding: 0.7em 1.3em;
       position: relative;
       display: inline-block;
@@ -161,25 +159,27 @@
       top: 0;
       left: 0;
       transform: translateY(-100%);
-      background: #ffffff;
-      color: #000000;
+      color: #ffffff;
       font-family: 'JetBrains Mono', ui-monospace, monospace;
-      font-size: 0.65em;
-      font-weight: 600;
+      font-size: 0.55em;
+      font-weight: 400;
+      letter-spacing: 0.2em;
       line-height: 1.2;
-      padding: 0.1em 0.4em;
+      padding: 0;
       white-space: nowrap;
-      border-radius: 1px;
+      opacity: 0.45;
     }
 
     .hint-text {
-      font-family: 'JetBrains Mono', ui-monospace, monospace;
-      font-weight: 400;
-      font-size: 1em;
+      font-family: 'Cormorant Garamond', 'Pirata One', serif;
+      font-style: italic;
+      font-weight: 300;
+      font-size: clamp(20px, 2.8vw, 30px);
       color: #ffffff;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      text-transform: lowercase;
       line-height: 1;
+      text-shadow: 0 0 22px rgba(255,255,255,0.25);
     }
 
     /* =========================================================
@@ -583,11 +583,13 @@
        ========================================================= */
     @media (max-width: 768px) {
       .hint-box {
-        font-size: 13px;
-        padding: 0.5em 0.9em;
+        padding: 0.4em 0.7em;
       }
       .hint-label {
-        font-size: 0.6em;
+        font-size: 0.5em;
+      }
+      .hint-text {
+        font-size: 20px;
       }
 
       /* ----- HIDE PLAYLIST ON MOBILE ----- */
