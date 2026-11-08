@@ -271,12 +271,14 @@
        ========================================================= */
     .site-title {
       position: fixed;
-      top: 5vh;
+      top: 3vh;
       left: 50%;
       transform: translateX(-50%);
       z-index: 4;
       font-family: 'BlackRotting', 'Pirata One', serif;
-      font-size: clamp(80px, 18vw, 240px);
+      /* limited by BOTH width and height so short/small desktop windows
+         don't let the title eat the space the lists need */
+      font-size: clamp(48px, min(max(18vw, 80px), 25vh), 240px);
       color: #ffffff;
       letter-spacing: 0.03em;
       text-align: center;
@@ -342,7 +344,13 @@
 
     #playlist-col {
       text-align: right;
-      max-width: clamp(250px, 30vw, 340px);
+      max-width: none;
+    }
+
+    /* Inner wrapper that JS scales (zoom) so each column always fits the
+       free space between the title, the hand and the screen edges. */
+    .fit-inner {
+      width: 300px;
     }
 
     /* --- Right stack container: Projects + Socials, no overlap --- */
@@ -351,13 +359,16 @@
       top: 50%;
       transform: translateY(-50%);
       z-index: 5;
-      display: flex;
-      flex-direction: column;
-      gap: 1.6em;
-      max-width: clamp(150px, 27vw, 270px);
       font-family: 'JetBrains Mono', ui-monospace, monospace;
       opacity: 0;
       transition: opacity 0.6s ease;
+    }
+
+    #right-stack .fit-inner {
+      display: flex;
+      flex-direction: column;
+      gap: 1.6em;
+      width: 280px;
     }
 
     body.head-visible #right-stack {
@@ -374,7 +385,7 @@
     }
 
     .col-heading {
-      font-size: clamp(13px, 1.7vw, 19px);
+      font-size: 15px;
       letter-spacing: 0.18em;
       text-transform: uppercase;
       color: #ffffff;
@@ -423,7 +434,7 @@
     }
 
     .info-list li {
-      font-size: clamp(15px, 1.9vw, 22px);
+      font-size: 18px;
       letter-spacing: 0.05em;
       color: #ffffff;
       line-height: 1.4;
@@ -439,6 +450,7 @@
 
     /* Projects items: clickable placeholders (wire up later) */
     #projects-list li {
+      min-height: 1.4em; /* reserve height so layout doesn't jump while typing */
       pointer-events: none;
       cursor: pointer;
       text-transform: uppercase;
@@ -636,9 +648,8 @@
         left: auto;
         right: 4vw;
         text-align: right;
-        max-width: 60vw;
-        gap: 2.2em;
       }
+      #right-stack .fit-inner { gap: 2.2em; }
       #right-stack .info-col { text-align: right; }
       #projects-list li::after,
       #socials-list li a::after,
@@ -674,10 +685,7 @@
         font-size: 13px;
         margin-bottom: 0.7em;
       }
-      #right-stack {
-        max-width: 62vw;
-        gap: 1.8em;
-      }
+      #right-stack .fit-inner { gap: 1.8em; }
     }
   </style>
 </head>
@@ -706,6 +714,7 @@
   </div>
 
   <div id="playlist-col" class="info-col">
+   <div class="fit-inner">
     <h2 class="col-heading">Playlist</h2>
     <div class="playlist-embeds">
       <div class="spotify-embed">
@@ -753,10 +762,12 @@
         </iframe>
       </div>
     </div>
+   </div>
   </div>
 
   <!-- Right-side stack: Projects + Socials -->
   <div id="right-stack">
+   <div class="fit-inner">
     <div id="projects-col" class="info-col">
       <h2 class="col-heading">Projects</h2>
       <ul id="projects-list" class="info-list">
@@ -775,6 +786,7 @@
         <li><span class="mail-link" data-mail="gekkefries@proton.me">mail : gekkefries@proton.me</span></li>
       </ul>
     </div>
+   </div>
   </div>
 
   <div id="tv-static"></div>
@@ -789,6 +801,7 @@
       const hintBox   = hintEl.querySelector('.hint-box');
       const hintLabel = document.getElementById('hint-label');
       const titleEl   = document.querySelector('.title-text');
+      const siteTitle = document.querySelector('.site-title');
       const headImg   = document.getElementById('head-img');
       const headWrap  = document.getElementById('head-wrap');
       const playlistCol = document.getElementById('playlist-col');
@@ -797,9 +810,8 @@
       const socialsList  = document.getElementById('socials-list');
 
       // Detect mobile (touch + narrow viewport)
-      const isMobile = () =>
-        window.matchMedia('(max-width: 768px)').matches ||
-        ('ontouchstart' in window && window.innerWidth < 900);
+      // Same breakpoint as the CSS, so JS and CSS never disagree
+      const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
 
       let sequenceRunning = false;
 
@@ -945,7 +957,7 @@
       function fitUphand() {
         if (!headImg) return;
         const layout = computeUphandLayout();
-        if (!layout) return;
+        if (!layout) { fitColumns(null); return; }
 
         headImg.style.height = layout.renderedH + 'px';
         headImg.style.width  = layout.renderedW + 'px';
@@ -954,20 +966,66 @@
         headWrap.style.left = '50%';
         headWrap.style.setProperty('--uphand-shift-x', layout.shiftX + 'px');
 
-        if (isMobile()) {
+        fitColumns(layout);
+      }
+
+      // ---------------------------------------------------------
+      // ADAPTIVE COLUMNS
+      // Free zone vertically = below the title, above a bottom margin.
+      // Free zone horizontally = between the screen edge and the hand.
+      // Each column is measured at natural size, then scaled (zoom on the
+      // inner wrapper) so it fits both dimensions, and centred in the zone.
+      // ---------------------------------------------------------
+      function fitColumn(outer, natW, availW, maxZoom, zoneTop, zoneH) {
+        const inner = outer.querySelector('.fit-inner');
+        if (!inner) return;
+        inner.style.zoom = 1;
+        inner.style.width = natW + 'px';
+        const natH = inner.offsetHeight || 1;
+        let z = Math.min(maxZoom, availW / natW, zoneH / natH);
+        if (!isFinite(z)) z = 1;
+        z = Math.max(0.3, z);
+        inner.style.zoom = z;
+        const h = natH * z;
+        outer.style.top = (zoneTop + Math.max(0, (zoneH - h) / 2)) + 'px';
+        outer.style.transform = 'none';
+      }
+
+      function fitColumns(layout) {
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        const mobile = isMobile();
+        if (!mobile && !layout) return;
+
+        const titleBottom = siteTitle ? siteTitle.getBoundingClientRect().bottom : 0;
+        const gapV = Math.max(8, H * 0.02);
+        const zoneTop = Math.min(titleBottom + gapV, H * 0.7);
+        const zoneBottom = H - Math.max(10, H * 0.03);
+        const zoneH = Math.max(60, zoneBottom - zoneTop);
+        const sideMargin = Math.max(10, W * 0.02);
+
+        if (mobile) {
+          if (rightStack) {
+            const natW = W * (W <= 420 ? 0.62 : 0.6);
+            fitColumn(rightStack, natW, W * 0.92, 1, zoneTop, zoneH);
+            rightStack.style.left = '';
+          }
           if (playlistCol) playlistCol.style.right = '';
-          if (rightStack) rightStack.style.left = '';
           return;
         }
 
-        const GAP = Math.max(12, window.innerWidth * 0.02);
+        const GAP = Math.max(12, W * 0.02);
         const handLeft  = layout.handLeftVP;
         const handRight = layout.handRightVP;
 
         if (playlistCol) {
-          playlistCol.style.right = (window.innerWidth - handLeft + GAP) + 'px';
+          const availW = handLeft - GAP - sideMargin;
+          fitColumn(playlistCol, 300, availW, 1.5, zoneTop, zoneH);
+          playlistCol.style.right = (W - (handLeft - GAP)) + 'px';
         }
         if (rightStack) {
+          const availW = W - (handRight + GAP) - sideMargin;
+          fitColumn(rightStack, 280, availW, 1.5, zoneTop, zoneH);
           rightStack.style.left = (handRight + GAP) + 'px';
         }
       }
@@ -1135,6 +1193,11 @@
       })();
 
       ready(headImg, () => { fitUphand(); });
+
+      // Web fonts change text metrics, so re-fit once they're loaded
+      if (document.fonts && document.fonts.ready) {
+        document.fonts.ready.then(scheduleUpdate);
+      }
 
       window.addEventListener('resize', scheduleUpdate);
       window.addEventListener('orientationchange', scheduleUpdate);
