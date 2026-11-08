@@ -256,10 +256,11 @@
       left: 50%;
       transform: translateX(-50%);
       z-index: 4;
-      font-family: 'BlackRotting', 'Pirata One', serif;
+      /* Same family as the intro title */
+      font-family: 'Pirata One', serif;
       font-size: clamp(48px, min(max(18vw, 80px), 25vh), 240px);
       color: #ffffff;
-      letter-spacing: 0.03em;
+      letter-spacing: 0.04em;
       text-align: center;
       text-shadow: 0 0 20px rgba(0,0,0,0.8);
       line-height: 1;
@@ -313,7 +314,6 @@
       max-width: clamp(150px, 27vw, 270px);
       opacity: 0;
       transition: opacity 0.6s ease;
-      /* Block ALL pointer interaction until the reveal completes */
       pointer-events: none;
     }
 
@@ -322,9 +322,6 @@
       transition-delay: 0.3s;
     }
 
-    /* Only once the reveal has fully finished do the columns
-       become clickable — this prevents ghost clicks on the first
-       screen from hitting hidden links/buttons. */
     body.uphand-visible #playlist-col,
     body.uphand-visible #right-stack {
       pointer-events: auto;
@@ -371,7 +368,6 @@
       pointer-events: none;
     }
 
-    /* Re-enable pointer events on the inner columns only after reveal */
     body.uphand-visible #right-stack .info-col {
       pointer-events: auto;
     }
@@ -590,7 +586,6 @@
         font-size: 20px;
       }
 
-      /* ----- HIDE PLAYLIST ON MOBILE ----- */
       #playlist-col { display: none !important; }
 
       #right-stack {
