@@ -778,6 +778,55 @@
   <div id="yolo-layer"></div>
 
   <script>
+    // =========================================================
+    // BFCACHE GUARD
+    // When the user starts the intro animation and refreshes
+    // mid-way, the browser may restore the page from the
+    // back/forward cache in a partially-frozen state — e.g. the
+    // left hand's src has already been cleared by the interrupted
+    // animation, so on refresh only the right hand appears.
+    //
+    // Fix: if the page is restored from bfcache while the intro
+    // sequence had already started, force a full reload so the
+    // page boots fresh with both hands intact.
+    // =========================================================
+    (function () {
+      // Mark when the page is put into bfcache
+      window.addEventListener('pagehide', function () {
+        // If the animation was already triggered, mark so we know
+        // on restore that we're in a half-finished state.
+        if (document.body.classList.contains('has-clicked')) {
+          try { sessionStorage.setItem('gekkefries-interrupted', '1'); } catch (e) {}
+        }
+      });
+
+      window.addEventListener('pageshow', function (e) {
+        const wasInterrupted = (() => {
+          try { return sessionStorage.getItem('gekkefries-interrupted') === '1'; }
+          catch (err) { return false; }
+        })();
+
+        // If restored from bfcache AND the intro was mid-sequence,
+        // force a hard reload so both hands are present again.
+        if (e.persisted && (wasInterrupted || document.body.classList.contains('has-clicked'))) {
+          try { sessionStorage.removeItem('gekkefries-interrupted'); } catch (err) {}
+          // location.reload() bypasses bfcache on the reload
+          window.location.reload();
+          return;
+        }
+
+        // Also handle the case where the left hand image is missing
+        // but we're supposedly at the start of the page — recover.
+        const leftImg = document.querySelector('.hand-left');
+        if (leftImg && !leftImg.getAttribute('src') &&
+            !document.body.classList.contains('head-visible')) {
+          // Left hand lost its src but we haven't entered the final
+          // page yet — reload to recover cleanly.
+          window.location.reload();
+        }
+      });
+    })();
+
     (function () {
       const leftImg   = document.querySelector('.hand-left');
       const rightImg  = document.querySelector('.hand-right');
