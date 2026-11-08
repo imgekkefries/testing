@@ -125,7 +125,7 @@
     }
 
     /* =========================================================
-       CLICK HINT — no box, just elegant script-like text
+       CLICK HINT — no box, elegant script text + position label
        ========================================================= */
     #click-hint {
       position: fixed;
@@ -149,25 +149,23 @@
     }
 
     .hint-box {
-      padding: 0.7em 1.3em;
       position: relative;
-      display: inline-block;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.55em;
+      padding: 0.7em 1.3em;
     }
 
     .hint-label {
-      position: absolute;
-      top: 0;
-      left: 0;
-      transform: translateY(-100%);
-      color: #ffffff;
       font-family: 'JetBrains Mono', ui-monospace, monospace;
-      font-size: 0.55em;
+      font-size: clamp(8px, 0.9vw, 10px);
       font-weight: 400;
-      letter-spacing: 0.2em;
+      letter-spacing: 0.22em;
       line-height: 1.2;
-      padding: 0;
       white-space: nowrap;
-      opacity: 0.45;
+      color: #ffffff;
+      opacity: 0.4;
     }
 
     .hint-text {
@@ -586,7 +584,8 @@
         padding: 0.4em 0.7em;
       }
       .hint-label {
-        font-size: 0.5em;
+        font-size: 8px;
+        letter-spacing: 0.18em;
       }
       .hint-text {
         font-size: 20px;
