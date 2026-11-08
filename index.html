@@ -608,6 +608,62 @@
       white-space: nowrap;
       border-radius: 1px;
     }
+
+    /* =========================================================
+       MOBILE OVERRIDES
+       ========================================================= */
+    @media (max-width: 768px) {
+      /* Smaller click hint */
+      .hint-box {
+        font-size: 13px;
+        padding: 0.5em 0.9em;
+      }
+      .hint-label {
+        font-size: 0.6em;
+      }
+
+      /* Hide the YOLO cursor box entirely on touch/mobile */
+      #yolo-layer { display: none !important; }
+
+      /* On mobile, columns can overlap the hand — JS only sets a
+         fixed margin between playlist and the right stack. */
+      #playlist-col,
+      #right-stack {
+        max-width: 42vw;
+      }
+      #playlist-col {
+        right: auto;
+        left: 3vw;
+        text-align: left;
+      }
+      #playlist-col .col-heading { text-align: left; }
+      #right-stack {
+        left: auto;
+        right: 3vw;
+        text-align: right;
+      }
+      #right-stack .info-col { text-align: right; }
+      #projects-list li::after,
+      #socials-list li a::after,
+      #socials-list li span.mail-link::after {
+        left: auto; right: 0;
+      }
+      .col-heading { text-align: right; }
+      #projects-list li,
+      #socials-list li { text-align: right; }
+
+      /* Shrink list font sizes so they fit comfortably side-by-side */
+      .info-list li {
+        font-size: 12px;
+        margin: 0.5em 0;
+      }
+      .col-heading {
+        font-size: 11px;
+        margin-bottom: 0.6em;
+      }
+      .spotify-embed iframe { height: 60px; }
+      #playlist-col { max-width: 44vw; }
+    }
   </style>
 </head>
 <body>
@@ -724,39 +780,25 @@
       const socialsList  = document.getElementById('socials-list');
       const siteTitleEl  = document.querySelector('.site-title');
 
+      // Detect mobile (touch + narrow viewport)
+      const isMobile = () =>
+        window.matchMedia('(max-width: 768px)').matches ||
+        ('ontouchstart' in window && window.innerWidth < 900);
+
       let sequenceRunning = false;
 
       // ---------------------------------------------------------
       // UPHAND NATURAL COORDINATES
       // ---------------------------------------------------------
-      // Fingertip: (592, 0) — at the very top of the image.
-      // Real hand horizontal edges (left, right):
-      //   Right side of hand edge: (778, 269)  -> x = 778
-      //   Left side of hand edge:  (344, 1145) -> x = 344
-      // So the actual hand occupies x ∈ [344, 778] in natural px.
-      // The rest of the image is empty padding we don't want columns
-      // to overlap. The hand's true horizontal center is:
-      //   (344 + 778) / 2 = 561
-      // And its true width is 778 - 344 = 434.
       const UPHAND_NAT = {
         tipX: 592,
         tipY: 0,
         leftEdgeX: 344,
         rightEdgeX: 778,
-        // natural image dimensions are read from the img element
       };
 
-      // Where we want the fingertip to land, vertically, as a fraction
-      // of the viewport height (pushes the hand down below the title).
       const UPHAND_TIP_TOP_VH = 26;
 
-      // Mobile breakpoint — below this width, side columns are allowed
-      // to overlap the uphand and use a fixed safe margin instead.
-      const MOBILE_BP = 768;
-
-      // Horizontal offset from viewport center to the "true hand" center.
-      // Applied so the visual hand is actually centered on screen, not
-      // the image's padding.
       function computeUphandLayout() {
         if (!headImg || !headImg.naturalWidth) return null;
 
@@ -767,30 +809,19 @@
         const H = window.innerHeight;
         const W = window.innerWidth;
 
-        // Aim: fingertip (natural y = 0) at (UPHAND_TIP_TOP_VH% of screen).
-        // The image will be placed with its bottom at the viewport bottom.
-        // So: rendered height = H - (tipTopPx)  (since tip is at image top)
         const tipTopPx = H * (UPHAND_TIP_TOP_VH / 100);
         const renderedH = Math.max(1, H - tipTopPx);
         const scale = renderedH / natH;
         const renderedW = natW * scale;
 
-        // Natural hand horizontal center in image space:
         const handCenterNatX = (UPHAND_NAT.leftEdgeX + UPHAND_NAT.rightEdgeX) / 2;
-        // In rendered space:
         const handCenterRenderedX = handCenterNatX * scale;
 
-        // We want the hand center to be at the viewport center. The
-        // wrapper is at left:50% with translateX(-50%), so its center
-        // is at W/2. The image's hand center sits at
-        // (renderedW/2 + offset), where offset = handCenterNatX*scale - renderedW/2.
-        // We need to shift the image right/left so the hand center lands at W/2.
         const wrapCenterX = W / 2;
         const imageLeftIfCentered = wrapCenterX - renderedW / 2;
         const handCenterIfCentered = imageLeftIfCentered + handCenterRenderedX;
-        const shiftX = wrapCenterX - handCenterIfCentered; // shift image by this
+        const shiftX = wrapCenterX - handCenterIfCentered;
 
-        // Real hand edges in viewport space after shift:
         const handLeftVP  = imageLeftIfCentered + UPHAND_NAT.leftEdgeX  * scale + shiftX;
         const handRightVP = imageLeftIfCentered + UPHAND_NAT.rightEdgeX * scale + shiftX;
 
@@ -806,56 +837,35 @@
         const layout = computeUphandLayout();
         if (!layout) return;
 
-        // Size the image
         headImg.style.height = layout.renderedH + 'px';
         headImg.style.width  = layout.renderedW + 'px';
 
-        // Shift horizontally so the visual hand center is screen-centered.
         headWrap.style.transform = '';
         headWrap.style.left = '50%';
-
-        // Apply per-state transforms via CSS variables instead so animation still works.
         headWrap.style.setProperty('--uphand-shift-x', layout.shiftX + 'px');
 
         // ---------------------------------------------------------
         // POSITION SIDE COLUMNS
+        // Desktop: tight against hand edges.
+        // Mobile: ignore hand edges — place them near the screen edges
+        // with a fixed margin between them (handled by CSS).
         // ---------------------------------------------------------
-        const isMobile = window.innerWidth <= MOBILE_BP;
+        if (isMobile()) {
+          // Let mobile CSS take over positioning.
+          playlistCol.style.right = '';
+          rightStack.style.left = '';
+          return;
+        }
 
-        if (isMobile) {
-          // On mobile, allow columns to overlap the uphand.
-          // Use a fixed safe margin from screen edges, and guarantee
-          // a margin between the playlist and the right stack.
-          const EDGE_MARGIN = Math.max(10, window.innerWidth * 0.03);
-          const INNER_GAP   = Math.max(16, window.innerWidth * 0.04);
+        const GAP = Math.max(12, window.innerWidth * 0.02);
+        const handLeft  = layout.handLeftVP;
+        const handRight = layout.handRightVP;
 
-          if (playlistCol) {
-            playlistCol.style.right = EDGE_MARGIN + 'px';
-            // Constrain width so it doesn't run into the right stack
-            const halfW = (window.innerWidth - EDGE_MARGIN * 2 - INNER_GAP) / 2;
-            playlistCol.style.maxWidth = halfW + 'px';
-          }
-          if (rightStack) {
-            rightStack.style.left = '';
-            rightStack.style.right = EDGE_MARGIN + 'px';
-            const halfW = (window.innerWidth - EDGE_MARGIN * 2 - INNER_GAP) / 2;
-            rightStack.style.maxWidth = halfW + 'px';
-          }
-        } else {
-          // Desktop: hug the real hand edges tightly.
-          const GAP = Math.max(12, window.innerWidth * 0.02);
-          const handLeft  = layout.handLeftVP;
-          const handRight = layout.handRightVP;
-
-          if (playlistCol) {
-            playlistCol.style.right = (window.innerWidth - handLeft + GAP) + 'px';
-            playlistCol.style.maxWidth = '';
-          }
-          if (rightStack) {
-            rightStack.style.left = (handRight + GAP) + 'px';
-            rightStack.style.right = '';
-            rightStack.style.maxWidth = '';
-          }
+        if (playlistCol) {
+          playlistCol.style.right = (window.innerWidth - handLeft + GAP) + 'px';
+        }
+        if (rightStack) {
+          rightStack.style.left = (handRight + GAP) + 'px';
         }
       }
 
@@ -1020,7 +1030,6 @@
       ready(leftImg, onOne);
       ready(rightImg, onOne);
 
-      // Fit uphand once it's loaded (natural size needed)
       ready(headImg, () => { fitUphand(); });
 
       window.addEventListener('resize', scheduleUpdate);
@@ -1104,13 +1113,10 @@
             rightImg.style.display = 'none';
           }, 1200);
 
-          // Show content (side columns + site title) first
           setTimeout(() => {
             document.body.classList.add('head-visible');
-            // Re-fit uphand now that it's about to be shown (viewport stable)
             fitUphand();
 
-            // Give content a beat to appear, THEN slide uphand up
             setTimeout(() => {
               document.body.classList.add('uphand-visible');
               typeAllLists();
@@ -1145,13 +1151,20 @@
       cursorBox.appendChild(cursorLabel);
       layer.appendChild(cursorBox);
 
+      // Only run on devices with a real mouse (not touch)
+      const isTouch = window.matchMedia('(pointer: coarse)').matches ||
+                      'ontouchstart' in window;
+
       let mx = 0, my = 0, hasMouse = false;
-      window.addEventListener('mousemove', function (e) {
-        mx = e.clientX; my = e.clientY; hasMouse = true;
-      });
-      document.addEventListener('mouseleave', function () { hasMouse = false; });
+      if (!isTouch) {
+        window.addEventListener('mousemove', function (e) {
+          mx = e.clientX; my = e.clientY; hasMouse = true;
+        });
+        document.addEventListener('mouseleave', function () { hasMouse = false; });
+      }
 
       function update() {
+        if (isTouch) { cursorBox.style.display = 'none'; return; }
         const W = window.innerWidth, H = window.innerHeight;
         if (hasMouse) {
           const half = CURSOR_SIZE / 2;
