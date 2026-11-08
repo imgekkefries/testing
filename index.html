@@ -125,7 +125,7 @@
     }
 
     /* =========================================================
-       CLICK HINT — no box, elegant script text + position label
+       CLICK HINT — no box, no label, just the word
        ========================================================= */
     #click-hint {
       position: fixed;
@@ -150,22 +150,8 @@
 
     .hint-box {
       position: relative;
-      display: inline-flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.55em;
+      display: inline-block;
       padding: 0.7em 1.3em;
-    }
-
-    .hint-label {
-      font-family: 'JetBrains Mono', ui-monospace, monospace;
-      font-size: clamp(8px, 0.9vw, 10px);
-      font-weight: 400;
-      letter-spacing: 0.22em;
-      line-height: 1.2;
-      white-space: nowrap;
-      color: #ffffff;
-      opacity: 0.4;
     }
 
     .hint-text {
@@ -583,10 +569,6 @@
       .hint-box {
         padding: 0.4em 0.7em;
       }
-      .hint-label {
-        font-size: 8px;
-        letter-spacing: 0.18em;
-      }
       .hint-text {
         font-size: 20px;
       }
@@ -642,7 +624,6 @@
 
   <div id="click-hint">
     <div class="hint-box">
-      <div class="hint-label" id="hint-label">hint 0.50 0.50 0.10 0.05</div>
       <div class="hint-text">click</div>
     </div>
   </div>
@@ -740,9 +721,6 @@
     (function () {
       const leftImg   = document.querySelector('.hand-left');
       const rightImg  = document.querySelector('.hand-right');
-      const hintEl    = document.getElementById('click-hint');
-      const hintBox   = hintEl.querySelector('.hint-box');
-      const hintLabel = document.getElementById('hint-label');
       const titleEl   = document.querySelector('.title-text');
       const siteTitle = document.querySelector('.site-title');
       const headImg   = document.getElementById('head-img');
@@ -1029,18 +1007,6 @@
         titleEl.style.fontSize = finalSize + 'px';
       }
 
-      function updateHintLabel() {
-        const r = hintBox.getBoundingClientRect();
-        const W = window.innerWidth;
-        const H = window.innerHeight;
-        const x_center = (r.left + r.width / 2) / W;
-        const y_center = (r.top + r.height / 2) / H;
-        const width = r.width / W;
-        const height = r.height / H;
-        hintLabel.textContent =
-          `hint ${x_center.toFixed(3)} ${y_center.toFixed(3)} ${width.toFixed(3)} ${height.toFixed(3)}`;
-      }
-
       function ready(img, cb) {
         if (img.complete && img.naturalWidth) cb();
         else img.addEventListener('load', cb, { once: true });
@@ -1086,7 +1052,6 @@
 
       function updateLayout() {
         fitTitleText();
-        updateHintLabel();
         fitUphand();
         fitSpotifyEmbeds();
         if (leftImg.style.display === 'none') return;
@@ -1094,7 +1059,6 @@
         if (handsOk && !document.body.classList.contains('ready')) {
           setTimeout(() => {
             document.body.classList.add('ready');
-            updateHintLabel();
           }, 50);
         }
       }
