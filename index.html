@@ -626,21 +626,21 @@
       #yolo-layer { display: none !important; }
 
       /* On mobile, columns can overlap the hand — JS only sets a
-         fixed margin between playlist and the right stack. */
-      #playlist-col,
-      #right-stack {
-        max-width: 42vw;
-      }
+         fixed margin between playlist and the right stack.
+         Give playlist a wider column so embeds are bigger. */
       #playlist-col {
         right: auto;
         left: 3vw;
         text-align: left;
+        width: 46vw;
+        max-width: 46vw;
       }
       #playlist-col .col-heading { text-align: left; }
       #right-stack {
         left: auto;
         right: 3vw;
         text-align: right;
+        max-width: 42vw;
       }
       #right-stack .info-col { text-align: right; }
       #projects-list li::after,
@@ -661,8 +661,24 @@
         font-size: 11px;
         margin-bottom: 0.6em;
       }
-      .spotify-embed iframe { height: 60px; }
-      #playlist-col { max-width: 44vw; }
+
+      /* -------------------------------------------------------
+         SPOTIFY EMBEDS — let the iframe scale fluidly to the
+         column width (Spotify's embed is designed for this).
+         Give each player a taller height so the compact layout
+         renders full content without clipping.
+         ------------------------------------------------------- */
+      .spotify-embed {
+        position: relative;
+        width: 100%;
+        overflow: hidden;
+      }
+      .spotify-embed iframe {
+        position: static;
+        width: 100% !important;
+        height: 100px !important;
+        transform: none !important;
+      }
     }
   </style>
 </head>
@@ -693,7 +709,7 @@
     <div class="playlist-embeds">
       <div class="spotify-embed">
         <iframe
-          src="https://open.spotify.com/embed/track/07QyYzVsdldnGygRZC8Q2w?utm_source=generator"
+          src="https://open.spotify.com/embed/track/07QyYzVsdldnGygRZC8Q2w?utm_source=generator&theme=0"
           width="100%"
           height="80"
           frameborder="0"
@@ -704,7 +720,7 @@
       </div>
       <div class="spotify-embed">
         <iframe
-          src="https://open.spotify.com/embed/track/5qG4mrKUlmGce1FA4wGrr7?utm_source=generator"
+          src="https://open.spotify.com/embed/track/5qG4mrKUlmGce1FA4wGrr7?utm_source=generator&theme=0"
           width="100%"
           height="80"
           frameborder="0"
@@ -715,7 +731,7 @@
       </div>
       <div class="spotify-embed">
         <iframe
-          src="https://open.spotify.com/embed/track/6Nm8h73ycDG2saCnZV8poF?utm_source=generator"
+          src="https://open.spotify.com/embed/track/6Nm8h73ycDG2saCnZV8poF?utm_source=generator&theme=0"
           width="100%"
           height="80"
           frameborder="0"
@@ -726,7 +742,7 @@
       </div>
       <div class="spotify-embed">
         <iframe
-          src="https://open.spotify.com/embed/track/5WGvXmLt6acluR7TfhlHUH?utm_source=generator"
+          src="https://open.spotify.com/embed/track/5WGvXmLt6acluR7TfhlHUH?utm_source=generator&theme=0"
           width="100%"
           height="80"
           frameborder="0"
@@ -788,6 +804,38 @@
       let sequenceRunning = false;
 
       // ---------------------------------------------------------
+      // SPOTIFY EMBEDS
+      // On mobile we simply let the native fluid iframe handle it.
+      // On desktop we keep the default 80px compact height.
+      // No more fixed-scale hacks.
+      // ---------------------------------------------------------
+      function fitSpotifyEmbeds() {
+        const embeds = document.querySelectorAll('.spotify-embed');
+        if (!embeds.length) return;
+        const mobile = isMobile();
+
+        embeds.forEach((embed) => {
+          const iframe = embed.querySelector('iframe');
+          if (!iframe) return;
+
+          // Clear any inline styles from previous experiments
+          embed.style.height = '';
+          iframe.style.position = '';
+          iframe.style.top = '';
+          iframe.style.left = '';
+          iframe.style.transform = '';
+          iframe.style.transformOrigin = '';
+          iframe.style.width = '';
+          iframe.style.height = '';
+
+          // Desktop height stays 80; mobile handles via CSS
+          if (!mobile) {
+            iframe.style.height = '80px';
+          }
+        });
+      }
+
+      // ---------------------------------------------------------
       // UPHAND NATURAL COORDINATES
       // ---------------------------------------------------------
       const UPHAND_NAT = {
@@ -844,14 +892,7 @@
         headWrap.style.left = '50%';
         headWrap.style.setProperty('--uphand-shift-x', layout.shiftX + 'px');
 
-        // ---------------------------------------------------------
-        // POSITION SIDE COLUMNS
-        // Desktop: tight against hand edges.
-        // Mobile: ignore hand edges — place them near the screen edges
-        // with a fixed margin between them (handled by CSS).
-        // ---------------------------------------------------------
         if (isMobile()) {
-          // Let mobile CSS take over positioning.
           playlistCol.style.right = '';
           rightStack.style.left = '';
           return;
@@ -999,6 +1040,7 @@
         fitTitleText();
         updateHintLabel();
         fitUphand();
+        fitSpotifyEmbeds();
         const handsOk = recomputeHands();
         if (handsOk && !document.body.classList.contains('ready')) {
           setTimeout(() => {
@@ -1116,6 +1158,7 @@
           setTimeout(() => {
             document.body.classList.add('head-visible');
             fitUphand();
+            fitSpotifyEmbeds();
 
             setTimeout(() => {
               document.body.classList.add('uphand-visible');
