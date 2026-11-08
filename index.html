@@ -236,7 +236,8 @@
       color: #ffffff;
       letter-spacing: 0.04em;
       opacity: 0;
-      transition: opacity 0.8s ease, transform 0.8s ease;
+      /* Intro title fade-in — 0.7s */
+      transition: opacity 0.7s ease, transform 0.7s ease;
       white-space: nowrap;
       text-shadow: 0 0 20px rgba(0,0,0,0.8);
       z-index: 3;
@@ -267,8 +268,6 @@
       pointer-events: none;
       opacity: 0;
       transition: opacity 1.2s ease;
-      /* Arch: each letter is nudged vertically so the center bows up
-         and the outer edges drop slightly, giving a gentle curve. */
     }
 
     body.head-visible .site-title {
@@ -311,26 +310,30 @@
     /* =========================================================
        SIDE COLUMNS
        ========================================================= */
-    .info-col {
+    .info-col,
+    #right-stack {
       position: fixed;
       top: 50%;
       transform: translateY(-50%);
       z-index: 5;
       font-family: 'JetBrains Mono', ui-monospace, monospace;
-      max-width: clamp(150px, 27vw, 270px);
       opacity: 0;
-      transition: opacity 0.6s ease;
+      visibility: hidden;
       pointer-events: none;
+      transition: opacity 0.6s ease, visibility 0s linear 0.6s;
     }
 
-    body.head-visible .info-col {
+    body.head-visible .info-col,
+    body.head-visible #right-stack {
       opacity: 1;
-      transition-delay: 0.3s;
+      transition-delay: 0.3s, 0s;
     }
 
     body.uphand-visible #playlist-col,
     body.uphand-visible #right-stack {
+      visibility: visible;
       pointer-events: auto;
+      transition: opacity 0.6s ease, visibility 0s linear 0s;
     }
 
     #playlist-col {
@@ -342,17 +345,6 @@
       width: 300px;
     }
 
-    #right-stack {
-      position: fixed;
-      top: 50%;
-      transform: translateY(-50%);
-      z-index: 5;
-      font-family: 'JetBrains Mono', ui-monospace, monospace;
-      opacity: 0;
-      transition: opacity 0.6s ease;
-      pointer-events: none;
-    }
-
     #right-stack .fit-inner {
       display: flex;
       flex-direction: column;
@@ -360,22 +352,13 @@
       width: 280px;
     }
 
-    body.head-visible #right-stack {
-      opacity: 1;
-      transition-delay: 0.3s;
-    }
-
     #right-stack .info-col {
       position: static;
       transform: none;
       max-width: none;
       opacity: 1;
+      visibility: inherit;
       transition: none;
-      pointer-events: none;
-    }
-
-    body.uphand-visible #right-stack .info-col {
-      pointer-events: auto;
     }
 
     .col-heading {
@@ -399,7 +382,6 @@
       display: flex;
       flex-direction: column;
       gap: 0.6em;
-      pointer-events: auto;
     }
 
     .spotify-embed {
@@ -471,7 +453,6 @@
     }
 
     #socials-list li {
-      pointer-events: auto;
       cursor: pointer;
       text-transform: uppercase;
     }
@@ -754,9 +735,6 @@
 
       // ---------------------------------------------------------
       // BUILD ARCHED SITE TITLE
-      // Each character gets its own <span> so we can push the
-      // middle ones up and the outer ones down, producing a gentle
-      // arch. The curve is a shallow parabola scaled by font-size.
       // ---------------------------------------------------------
       const SITE_TITLE_TEXT = 'gekkefries';
       let siteTitleChars = [];
@@ -780,23 +758,18 @@
         const n = siteTitleChars.length;
         if (n < 2) return;
 
-        // Arch depth as a fraction of font-size. Small = subtle.
         const fsPx = parseFloat(getComputedStyle(siteTitle).fontSize) || 120;
-        const depth = fsPx * 0.10; // max lift/drop of the arch
+        const depth = fsPx * 0.10;
 
-        // For each char, t goes from -1 (left) → 0 (center) → +1 (right)
-        // Parabola y = t^2, so center = 0 (highest), edges = 1 (lowest).
         for (let i = 0; i < n; i++) {
-          const t = (i / (n - 1)) * 2 - 1; // -1..1
-          const lift = depth * (t * t);    // 0 at center, depth at edges
-          // Positive translateY moves DOWN; we want center up, edges down,
-          // so translate by (lift) but offset so the whole word is centered.
+          const t = (i / (n - 1)) * 2 - 1;
+          const lift = depth * (t * t);
           siteTitleChars[i].style.transform = `translateY(${lift - depth * 0.5}px)`;
         }
       }
 
       // ---------------------------------------------------------
-      // BFCACHE / REFRESH SAFETY (mobile fix)
+      // BFCACHE / REFRESH SAFETY
       // ---------------------------------------------------------
       function releaseHands() {
         [leftImg, rightImg].forEach((img) => {
@@ -1135,7 +1108,6 @@
         });
       }
 
-      // Build the arched title up front so its span structure exists
       buildArchedTitle();
 
       fitTitleText();
