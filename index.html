@@ -636,13 +636,47 @@
         max-width: 46vw;
       }
       #playlist-col .col-heading { text-align: left; }
+      /* Right stack: top-aligned (not vertically centered) so it
+         sits beside the playlist, with a fixed width and a tighter
+         gap so Projects + Socials fit without crowding. */
       #right-stack {
         left: auto;
         right: 3vw;
+        top: 30vh;
+        transform: none;
         text-align: right;
-        max-width: 42vw;
+        width: 44vw;
+        max-width: 44vw;
+        gap: 1.4em;
+        align-items: flex-end;
       }
-      #right-stack .info-col { text-align: right; }
+      #right-stack .info-col {
+        text-align: right;
+        width: 100%;
+      }
+      #right-stack .col-heading {
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        margin-bottom: 0.5em;
+      }
+      #projects-list li {
+        font-size: 11px;
+        min-height: 1.4em;
+        margin: 0.4em 0;
+      }
+      #socials-list li {
+        font-size: 9.5px;
+        letter-spacing: 0.02em;
+        line-height: 1.35;
+        margin: 0.55em 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      #socials-list li a,
+      #socials-list li span.mail-link {
+        display: inline-block;
+        max-width: 100%;
+      }
       #projects-list li::after,
       #socials-list li a::after,
       #socials-list li span.mail-link::after {
