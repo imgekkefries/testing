@@ -628,13 +628,14 @@
       /* ----- HIDE PLAYLIST ON MOBILE ----- */
       #playlist-col { display: none !important; }
 
-      /* Right stack (Projects + Socials) gets more room since
-         the playlist is gone. Allow it to overlap the up-hand. */
+      /* Right stack (Projects + Socials) gets a bigger share of
+         the screen since the playlist is gone. */
       #right-stack {
         left: auto;
         right: 4vw;
         text-align: right;
-        max-width: 52vw;
+        max-width: 60vw;
+        gap: 2.2em;
       }
       #right-stack .info-col { text-align: right; }
       #projects-list li::after,
@@ -646,14 +647,34 @@
       #projects-list li,
       #socials-list li { text-align: right; }
 
-      /* List font sizes */
+      /* ----- BIGGER LIST SIZES (playlist removed = more room) ----- */
       .info-list li {
-        font-size: 12px;
-        margin: 0.5em 0;
+        font-size: 17px;
+        letter-spacing: 0.06em;
+        margin: 0.85em 0;
+        line-height: 1.45;
       }
       .col-heading {
-        font-size: 11px;
-        margin-bottom: 0.6em;
+        font-size: 14px;
+        letter-spacing: 0.22em;
+        margin-bottom: 0.9em;
+      }
+    }
+
+    /* Extra small phones: slightly trim to keep lists from wrapping
+       too aggressively */
+    @media (max-width: 420px) {
+      .info-list li {
+        font-size: 15px;
+        margin: 0.7em 0;
+      }
+      .col-heading {
+        font-size: 13px;
+        margin-bottom: 0.7em;
+      }
+      #right-stack {
+        max-width: 62vw;
+        gap: 1.8em;
       }
     }
   </style>
@@ -860,9 +881,7 @@
         headWrap.style.setProperty('--uphand-shift-x', layout.shiftX + 'px');
 
         if (isMobile()) {
-          // Playlist is hidden; clear any JS positioning on it
           if (playlistCol) playlistCol.style.right = '';
-          // Right stack is positioned via mobile CSS
           if (rightStack) rightStack.style.left = '';
           return;
         }
