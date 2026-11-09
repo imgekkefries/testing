@@ -376,10 +376,7 @@
 
     /* ---------------------------------------------------------
        SPOTIFY EMBEDS
-       ---------------------------------------------------------
-       Playlist embeds fade in sequentially top→bottom, and the
-       whole column gets a max-height with scroll so it can never
-       overflow the available vertical space. */
+       --------------------------------------------------------- */
     .playlist-embeds {
       display: flex;
       flex-direction: column;
@@ -390,7 +387,6 @@
       scrollbar-width: thin;
       scrollbar-color: rgba(255,255,255,0.25) transparent;
       -webkit-overflow-scrolling: touch;
-      /* fade mask at top & bottom edges so scrolling feels soft */
       -webkit-mask-image: linear-gradient(to bottom,
         transparent 0,
         #000 12px,
@@ -426,7 +422,6 @@
       transform: translateY(-10px);
     }
 
-    /* staggered top→bottom reveal */
     body.uphand-visible #playlist-col .spotify-embed {
       opacity: 1;
       transform: translateY(0);
@@ -1228,7 +1223,8 @@
         document.body.classList.add('has-clicked');
         document.body.classList.add('touching');
 
-        setTimeout(() => { document.body.classList.add('sequence-glow'); }, 600);
+        // Hands pull back to rest quickly after the click.
+        setTimeout(() => { document.body.classList.add('sequence-glow'); }, 400);
 
         setTimeout(() => {
           document.body.classList.remove('touching');
@@ -1237,10 +1233,10 @@
           setTimeout(() => {
             document.body.classList.add('sequence-text');
             document.body.classList.add('sequence-fade');
-          }, 400);
-        }, 1600);
+          }, 300);
+        }, 1000);
 
-        // Title-text now only lingers ~0.5s before the exit.
+        // Title-text lingers ~0.5s, then the exit sequence fires.
         setTimeout(() => {
           document.body.classList.add('hands-exiting');
           setTimeout(() => {
@@ -1261,7 +1257,7 @@
               typeAllLists();
             }, 900);
           }, 900);
-        }, 5200);
+        }, 2800);
       });
     })();
 
